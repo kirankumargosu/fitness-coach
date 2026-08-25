@@ -1,0 +1,323 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../api/client";
+import type { DraftSet, SetKind } from "../api/types";
+import { useUsers } from "../context/UserContext";
+import { userColor } from "../lib/userColor";
+
+function toLocalDatetimeInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+}
+
+function emptySet(setNumber: number, kind: SetKind = "strength"): DraftSet {
+  return {
+    kind,
+    exercise_name: "",
+    set_number: setNumber,
+    reps: 8,
+    weight: 0,
+    weight_unit: "kg",
+    duration_minutes: 20,
+    distance: 0,
+    distance_unit: "km",
+  };
+}
+
+export function LogWorkout() {
+  const { activeUser } = useUsers();
+  const navigate = useNavigate();
+
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState(toLocalDatetimeInputValue(new Date()));
+  // const [duration, setDuration] = useState<string>("");
+  // const [notes, setNotes] = useState("");
+  const [sets, setSets] = useState<DraftSet[]>([emptySet(1)]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateSet = (index: number, patch: Partial<DraftSet>) => {
+    setSets((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, ...patch } : s))
+    );
+  };
+
+  const addSetRow = () => {
+    const last = sets[sets.length - 1];
+    setSets((prev) => [
+      ...prev,
+      {
+        ...emptySet(prev.length + 1, last?.kind ?? "strength"),
+        exercise_name: last?.exercise_name ?? "",
+        weight: last?.weight ?? 0,
+        weight_unit: last?.weight_unit ?? "kg",
+        reps: last?.reps ?? 8,
+        duration_minutes: last?.duration_minutes ?? 20,
+        distance: last?.distance ?? 0,
+        distance_unit: last?.distance_unit ?? "km",
+      },
+    ]);
+  };
+
+  const removeSetRow = (index: number) => {
+    setSets((prev) =>
+      prev
+        .filter((_, i) => i !== index)
+        .map((s, i) => ({ ...s, set_number: i + 1 }))
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeUser) return;
+
+    const validSets = sets.filter((s) => s.exercise_name.trim().length > 0);
+    if (validSets.length === 0) {
+      setError("Log at least one set with an exercise name.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const session = await api.createSession({
+        user_id: activeUser.id,
+        title: title.trim() || undefined,
+        date: new Date(date).toISOString(),
+        // duration_minutes: duration ? Number(duration) : undefined,
+        // notes: notes.trim() || undefined,
+        sets: validSets.map((s) =>
+          s.kind === "strength"
+            ? {
+                exercise_name: s.exercise_name,
+                set_number: s.set_number,
+                reps: s.reps,
+                weight: s.weight,
+                weight_unit: s.weight_unit,
+              }
+            : {
+                exercise_name: s.exercise_name,
+                set_number: s.set_number,
+                duration_seconds: Math.round(s.duration_minutes * 60),
+                distance: s.distance || undefined,
+                distance_unit: s.distance_unit,
+              }
+        ),
+      });
+      navigate(`/history?session=${session.id}`);
+    } catch {
+      setError("Couldn't save that session — check the fields and try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!activeUser) {
+    return <p className="empty-state">Loading lifters…</p>;
+  }
+
+  return (
+    <form className="log-form" onSubmit={handleSubmit}>
+      <div className="log-form-header">
+        <h2>Log a session</h2>
+        <span className="pill" style={{ borderColor: userColor(activeUser) }}>
+          Logging for <strong>{activeUser.name}</strong>
+        </span>
+      </div>
+
+      <div className="field-grid">
+        <label className="field">
+          <span>Title</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Push day, Leg day, Morning run…"
+          />
+        </label>
+        <label className="field">
+          <span>Date &amp; time</span>
+          <input
+            type="datetime-local"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+        </label>
+        {/* <label className="field">
+          <span>Duration (min)</span>
+          <input
+            type="number"
+            min={0}
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            placeholder="60"
+          />
+        </label> */}
+      </div>
+
+      {/* <label className="field">
+        <span>Notes</span>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          placeholder="How it felt, what to adjust next time…"
+        />
+      </label> */}
+
+      <h3 className="section-label">Sets</h3>
+      <div className="set-rows">
+        {sets.map((s, i) => (
+          <div className={`set-row set-row-${s.kind}`} key={i}>
+            <div className="set-row-top">
+              <span className="set-index">{s.set_number}</span>
+              <input
+                className="set-exercise"
+                placeholder={
+                  s.kind === "strength"
+                    ? "Exercise, e.g. Bench Press"
+                    : "Activity, e.g. Jogging"
+                }
+                value={s.exercise_name}
+                onChange={(e) => updateSet(i, { exercise_name: e.target.value })}
+                list="exercise-suggestions"
+              />
+              <button
+                type="button"
+                className="icon-btn danger"
+                onClick={() => removeSetRow(i)}
+                aria-label="Remove set"
+                disabled={sets.length === 1}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="set-row-toggle-wrap">
+              <div className="set-kind-toggle" role="group" aria-label="Set type">
+                <button
+                  type="button"
+                  className={s.kind === "strength" ? "active" : ""}
+                  onClick={() => updateSet(i, { kind: "strength" })}
+                >
+                  Reps
+                </button>
+                <button
+                  type="button"
+                  className={s.kind === "cardio" ? "active" : ""}
+                  onClick={() => updateSet(i, { kind: "cardio" })}
+                >
+                  Time
+                </button>
+              </div>
+            </div>
+
+            {s.kind === "strength" ? (
+              <div className="set-row-fields">
+                <label className="set-field">
+                  <span className="set-field-label">Reps</span>
+                  <input
+                    className="set-num"
+                    type="number"
+                    min={0}
+                    value={s.reps}
+                    onChange={(e) =>
+                      updateSet(i, { reps: Number(e.target.value) })
+                    }
+                    aria-label="Reps"
+                  />
+                </label>
+                <label className="set-field">
+                  <span className="set-field-label">Weight</span>
+                  <div className="input-with-unit">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.5"
+                      value={s.weight}
+                      onChange={(e) =>
+                        updateSet(i, { weight: Number(e.target.value) })
+                      }
+                      aria-label="Weight"
+                    />
+                    <select
+                      value={s.weight_unit}
+                      onChange={(e) =>
+                        updateSet(i, {
+                          weight_unit: e.target.value as "kg" | "lb",
+                        })
+                      }
+                      aria-label="Weight unit"
+                    >
+                      <option value="kg">kg</option>
+                      <option value="lb">lb</option>
+                    </select>
+                  </div>
+                </label>
+              </div>
+            ) : (
+              <div className="set-row-fields">
+                <label className="set-field">
+                  <span className="set-field-label">Duration</span>
+                  <div className="input-with-unit">
+                    <input
+                      type="number"
+                      min={0}
+                      value={s.duration_minutes}
+                      onChange={(e) =>
+                        updateSet(i, {
+                          duration_minutes: Number(e.target.value),
+                        })
+                      }
+                      aria-label="Duration in minutes"
+                    />
+                    <span className="input-unit-fixed">min</span>
+                  </div>
+                </label>
+                <label className="set-field">
+                  <span className="set-field-label">Distance</span>
+                  <div className="input-with-unit">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.1"
+                      value={s.distance}
+                      onChange={(e) =>
+                        updateSet(i, { distance: Number(e.target.value) })
+                      }
+                      aria-label="Distance"
+                    />
+                    <select
+                      value={s.distance_unit}
+                      onChange={(e) =>
+                        updateSet(i, {
+                          distance_unit: e.target.value as "km" | "mi",
+                        })
+                      }
+                      aria-label="Distance unit"
+                    >
+                      <option value="km">km</option>
+                      <option value="mi">mi</option>
+                    </select>
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button type="button" className="ghost-btn" onClick={addSetRow}>
+        + Add set
+      </button>
+
+      {error && <p className="form-error">{error}</p>}
+
+      <button type="submit" className="primary-btn" disabled={submitting}>
+        {submitting ? "Saving…" : "Save session"}
+      </button>
+    </form>
+  );
+}

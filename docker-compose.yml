@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/gym_tracker.db
+    volumes:
+      - ${HOST_DATA_DIR:-/home/kiran/data}:/data
+    expose:
+      - "8000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    build:
+      context: ./nginx
+    restart: unless-stopped
+    # This is the only service exposed outside the Docker network — the
+    # single door in for LAN / Tailscale / router port-forward access.
+    ports:
+      - "${HOST_PORT:-6060}:80"
+    depends_on:
+      - backend
+      - frontend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

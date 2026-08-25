@@ -1,0 +1,520 @@
+/* ---------- Layout ---------- */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(180deg, var(--surface), var(--ink));
+  flex-wrap: wrap;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.app-brand-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 4px solid var(--plate-yellow);
+  box-shadow: inset 0 0 0 3px var(--ink);
+}
+
+.app-brand h1 {
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+}
+
+.app-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--hairline);
+  overflow-x: auto;
+}
+
+.app-nav a {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--chalk-dim);
+  padding: 0.85rem 1.1rem;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+
+.app-nav a.active {
+  color: var(--chalk);
+  border-bottom-color: var(--plate-yellow);
+}
+
+.app-main {
+  flex: 1;
+  padding: 1.25rem;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ---------- User switch ---------- */
+.user-switch {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.user-switch-btn {
+  --user-color: var(--plate-yellow);
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline);
+  color: var(--chalk-dim);
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.user-switch-btn.active {
+  color: var(--ink);
+  background: var(--user-color);
+  border-color: var(--user-color);
+  font-weight: 600;
+}
+
+/* ---------- Forms ---------- */
+.log-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.pill {
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--chalk-dim);
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+@media (max-width: 560px) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.field > span {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--chalk-dim);
+}
+
+input,
+textarea,
+select {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  color: var(--chalk);
+  padding: 0.55rem 0.65rem;
+  font-size: 0.95rem;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--plate-yellow);
+}
+
+.section-label {
+  font-size: 0.85rem;
+  color: var(--chalk-dim);
+  margin: 1.25rem 0 0.6rem;
+}
+
+.set-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.set-row {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  background: var(--surface);
+}
+
+/* Line 1: set number + exercise name + remove button */
+.set-row-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.set-index {
+  flex: none;
+  width: 1.4rem;
+  font-family: var(--font-display);
+  color: var(--plate-yellow);
+  text-align: center;
+}
+
+.set-exercise {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.set-row-top > .icon-btn {
+  flex: none;
+}
+
+/* Line 2: strength/cardio toggle, centered in its own row */
+.set-row-toggle-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.6rem;
+}
+
+.set-kind-toggle {
+  flex: none;
+  display: flex;
+  width: 100%;
+  max-width: 16rem;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.set-kind-toggle button {
+  flex: 1 1 50%;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  color: var(--chalk-dim);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.55rem 0.5rem;
+  cursor: pointer;
+}
+
+.set-kind-toggle button.active {
+  background: var(--plate-yellow);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Line 3: the value fields */
+.set-row-fields {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.set-field {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.set-field-label {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--chalk-dim);
+}
+
+.set-num {
+  width: 100%;
+}
+
+/* Value + unit rendered as one visually joined control */
+.input-with-unit {
+  display: flex;
+
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.input-with-unit input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.input-with-unit select {
+  flex: none;
+  width: auto;
+  border: none;
+  border-left: 1px solid var(--hairline);
+  border-radius: 0;
+  background: var(--surface-raised);
+  color: var(--chalk-dim);
+  font-size: 0.85rem;
+  padding: 0.55rem 0.4rem;
+}
+
+.input-with-unit input:focus,
+.input-with-unit select:focus {
+  outline-offset: -2px;
+}
+
+.input-unit-fixed {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 0.6rem;
+  background: var(--surface-raised);
+  color: var(--chalk-dim);
+  font-size: 0.8rem;
+  border-left: 1px solid var(--hairline);
+}
+
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--chalk-dim);
+  border-radius: 6px;
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+}
+
+.icon-btn.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ghost-btn {
+  background: transparent;
+  border: 1px dashed var(--hairline);
+  color: var(--chalk-dim);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin-top: 0.75rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+}
+
+.ghost-btn.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.primary-btn {
+  display: block;
+  width: 100%;
+  margin-top: 1.5rem;
+  background: var(--plate-yellow);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 0.85rem;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+/* ---------- History ---------- */
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.session-card {
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.session-card-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  text-align: left;
+  flex-wrap: wrap;
+}
+
+.session-card-header h3 {
+  font-size: 1rem;
+}
+
+.session-meta {
+  color: var(--chalk-dim);
+  font-size: 0.8rem;
+}
+
+.session-stats {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--plate-yellow);
+  font-family: var(--font-mono);
+}
+
+.session-detail {
+  border-top: 1px solid var(--hairline);
+  padding: 0.9rem 1rem 1.1rem;
+}
+
+.session-notes {
+  color: var(--chalk-dim);
+  font-style: italic;
+  margin: 0 0 0.9rem;
+}
+
+.exercise-block {
+  margin-bottom: 1rem;
+}
+
+.exercise-block h4 {
+  font-size: 0.85rem;
+  color: var(--chalk-dim);
+  margin-bottom: 0.35rem;
+}
+
+.set-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.set-table th {
+  text-align: left;
+  color: var(--chalk-dim);
+  font-weight: 400;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.set-table td {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* ---------- Personal bests ---------- */
+.pb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.pb-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 1rem 0.5rem;
+}
+
+.pb-name {
+  font-size: 0.8rem;
+  color: var(--chalk-dim);
+  text-align: center;
+}
+
+.plate-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plate-ring-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.plate-ring-value {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--chalk);
+}
+
+.plate-ring-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chalk-dim);
+}
+
+/* ---------- Empty states ---------- */
+.empty-state {
+  text-align: center;
+  color: var(--chalk-dim);
+  padding: 3rem 1rem;
+}
+
+.empty-state-sub {
+  font-size: 0.85rem;
+}

@@ -1,0 +1,91 @@
+:root {
+  /* -- Iron & Chalk design tokens -- */
+  --ink: #17161a;
+  --surface: #221f22;
+  --surface-raised: #2a262a;
+  --hairline: #3a353a;
+  --chalk: #eee8dc;
+  --chalk-dim: #a89f93;
+  --plate-yellow: #e3b23c;
+  --plate-yellow-dim: #6b5628;
+  --kiran: #4fa39a;
+  --tony: #c1553a;
+  --anish: #a6c13a;
+  --danger: #c1553a;
+
+  --font-display: "Oswald", "Arial Narrow", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ink);
+  background-image: radial-gradient(
+    circle at 8% 0%,
+    rgba(227, 178, 60, 0.05),
+    transparent 45%
+  );
+  color: var(--chalk);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+  color: var(--chalk);
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: var(--font-display);
+}
+
+input,
+textarea,
+select {
+  font-family: var(--font-mono);
+}
+
+:focus-visible {
+  outline: 2px solid var(--plate-yellow);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--plate-yellow-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
