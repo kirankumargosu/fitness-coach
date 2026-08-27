@@ -52,27 +52,25 @@ export function LogWorkout() {
   };
 
   const addSetRow = () => {
-    const last = sets[sets.length - 1];
+    const lastKind = sets[sets.length - 1]?.kind ?? "strength";
     setSets((prev) => [
-      ...prev,
       {
-        ...emptySet(prev.length + 1, last?.kind ?? "strength"),
-        exercise_name: last?.exercise_name ?? "",
-        weight: last?.weight ?? 0,
-        weight_unit: last?.weight_unit ?? "kg",
-        reps: last?.reps ?? 8,
-        duration_minutes: last?.duration_minutes ?? 20,
-        distance: last?.distance ?? 0,
-        distance_unit: last?.distance_unit ?? "km",
+        ...emptySet(1, lastKind),
+        exercise_name: "",
+        reps: 0,
+        weight: 0,
+        duration_minutes: 0,
+        distance: 0,
       },
-    ]);
+      ...prev,
+    ].map((s, i, rows) => ({ ...s, set_number: rows.length - i })));
   };
 
   const removeSetRow = (index: number) => {
     setSets((prev) =>
       prev
         .filter((_, i) => i !== index)
-        .map((s, i) => ({ ...s, set_number: i + 1 }))
+        .map((s, i, rows) => ({ ...s, set_number: rows.length - i }))
     );
   };
 
@@ -128,7 +126,9 @@ export function LogWorkout() {
   return (
     <form className="log-form" onSubmit={handleSubmit}>
       <div className="log-form-header">
-        <h2>Log a session</h2>
+        <div className="log-form-title">
+          <h2>Log a session</h2>
+        </div>
         {isAdmin ? (
           <label className="field admin-target-picker">
             <span>Logging for</span>
@@ -147,12 +147,12 @@ export function LogWorkout() {
             </select>
           </label>
         )
-         : ""
-        //  (
-        //   <span className="pill" style={{ borderColor: userColor(logTarget) }}>
-        //     Logging for <strong>{logTarget.name}</strong>
-        //   </span>
-        // )
+          : ""
+          //  (
+          //   <span className="pill" style={{ borderColor: userColor(logTarget) }}>
+          //     Logging for <strong>{logTarget.name}</strong>
+          //   </span>
+          // )
         }
       </div>
 
@@ -174,6 +174,8 @@ export function LogWorkout() {
             required
           />
         </label>
+
+
         {/* <label className="field">
           <span>Duration (min)</span>
           <input
@@ -184,19 +186,18 @@ export function LogWorkout() {
             placeholder="60"
           />
         </label> */}
+        
       </div>
-
-      {/* <label className="field">
-        <span>Notes</span>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
-          placeholder="How it felt, what to adjust next time…"
-        />
-      </label> */}
-
+      <div className="set-row-toggle-wrap"> 
+        <button type="submit" className="secondary-btn" disabled={submitting}>
+          {submitting ? "Saving…" : "Save session"}
+        </button>
+      </div>
       <h3 className="section-label">Sets</h3>
+      <button type="button" className="ghost-btn" onClick={addSetRow}>
+        + Add set
+      </button>
+
       <div className="set-rows">
         {sets.map((s, i) => (
           <div className={`set-row set-row-${s.kind}`} key={i}>
@@ -338,15 +339,8 @@ export function LogWorkout() {
         ))}
       </div>
 
-      <button type="button" className="ghost-btn" onClick={addSetRow}>
-        + Add set
-      </button>
-
       {error && <p className="form-error">{error}</p>}
 
-      <button type="submit" className="primary-btn" disabled={submitting}>
-        {submitting ? "Saving…" : "Save session"}
-      </button>
     </form>
   );
 }
