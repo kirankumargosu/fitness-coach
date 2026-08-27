@@ -13,6 +13,7 @@ from app.migrations import (
 )
 from app.routers import auth as auth_router
 from app.routers import exercises, users, workouts
+import os
 
 # Registration is open — anyone can create an account with any name (see
 # routers/auth.py). There's no fixed roster to seed anymore. The only
@@ -41,8 +42,16 @@ async def lifespan(app: FastAPI):
         db.close()
     yield
 
+DOCS_ENABLED = os.getenv("ENABLE_DOCS", "false").lower() == "true"
 
-app = FastAPI(title="Gym Tracker API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Gym Tracker API",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url="/docs" if DOCS_ENABLED else None,
+    redoc_url="/redoc" if DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if DOCS_ENABLED else None,
+)
 
 # Cookie-based sessions require explicit origins (not "*") once
 # allow_credentials is on. In production everything is same-origin behind

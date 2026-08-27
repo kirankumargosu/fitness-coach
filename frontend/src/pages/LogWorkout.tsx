@@ -4,7 +4,7 @@ import { api, apiErrorMessage } from "../api/client";
 import type { DraftSet, SetKind } from "../api/types";
 import { useAuth } from "../context/AuthContext";
 import { useUsers } from "../context/UserContext";
-import { userColor } from "../lib/userColor";
+// import { userColor } from "../lib/userColor";
 
 function toLocalDatetimeInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -98,19 +98,19 @@ export function LogWorkout() {
         sets: validSets.map((s) =>
           s.kind === "strength"
             ? {
-                exercise_name: s.exercise_name,
-                set_number: s.set_number,
-                reps: s.reps,
-                weight: s.weight,
-                weight_unit: s.weight_unit,
-              }
+              exercise_name: s.exercise_name,
+              set_number: s.set_number,
+              reps: s.reps,
+              weight: s.weight,
+              weight_unit: s.weight_unit,
+            }
             : {
-                exercise_name: s.exercise_name,
-                set_number: s.set_number,
-                duration_seconds: Math.round(s.duration_minutes * 60),
-                distance: s.distance || undefined,
-                distance_unit: s.distance_unit,
-              }
+              exercise_name: s.exercise_name,
+              set_number: s.set_number,
+              duration_seconds: Math.round(s.duration_minutes * 60),
+              distance: s.distance || undefined,
+              distance_unit: s.distance_unit,
+            }
         ),
       });
       navigate(`/history?session=${session.id}`);
@@ -146,11 +146,14 @@ export function LogWorkout() {
               ))}
             </select>
           </label>
-        ) : (
-          <span className="pill" style={{ borderColor: userColor(logTarget) }}>
-            Logging for <strong>{logTarget.name}</strong>
-          </span>
-        )}
+        )
+         : ""
+        //  (
+        //   <span className="pill" style={{ borderColor: userColor(logTarget) }}>
+        //     Logging for <strong>{logTarget.name}</strong>
+        //   </span>
+        // )
+        }
       </div>
 
       <div className="field-grid">
@@ -162,7 +165,7 @@ export function LogWorkout() {
             placeholder="Push day, Leg day, Morning run…"
           />
         </label> */}
-        <label className="field">
+        <label className="field date-field">
           <span>Date &amp; time</span>
           <input
             type="datetime-local"

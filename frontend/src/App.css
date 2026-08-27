@@ -161,12 +161,27 @@
   margin-bottom: 0.9rem;
 }
 
-.field > span {
+.field>span {
   font-family: var(--font-display);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--chalk-dim);
+}
+
+.date-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.date-field>span {
+  flex: none;
+}
+
+.date-field input {
+  flex: 1;
+  min-width: 0;
 }
 
 input,
@@ -226,7 +241,7 @@ select:focus {
   min-width: 0;
 }
 
-.set-row-top > .icon-btn {
+.set-row-top>.icon-btn {
   flex: none;
 }
 
@@ -581,7 +596,7 @@ select:focus {
   margin-bottom: 0;
 }
 
-.admin-target-picker > span {
+.admin-target-picker>span {
   white-space: nowrap;
 }
 
