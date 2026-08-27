@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -9,6 +9,64 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
+    role: str
+    has_password: bool = False
+    # Just avatar material (initials) — not sensitive, fine to include in
+    # the general user list. The rest of the profile (DOB, gender, height,
+    # weight, goal) is NOT here — see ProfileOut, which is only reachable
+    # via the ownership-protected /profile endpoint.
+    first_name: str | None = None
+    last_name: str | None = None
+
+
+class RegisterRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=50)
+    password: str = Field(min_length=4, max_length=200)
+
+
+class LoginRequest(BaseModel):
+    name: str
+    password: str
+
+
+# ---------- Profile (personal details) ----------
+class ProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    first_name: str | None = None
+    last_name: str | None = None
+    date_of_birth: date | None = None
+    gender: str | None = None
+    height: float | None = None
+    height_unit: Literal["cm", "in"] | None = None
+    weight: float | None = None
+    weight_unit: Literal["kg", "lb"] | None = None
+    goal: str | None = None
+
+
+class ProfileUpdate(BaseModel):
+    first_name: str | None = Field(default=None, max_length=50)
+    last_name: str | None = Field(default=None, max_length=50)
+    date_of_birth: date | None = None
+    gender: str | None = Field(default=None, max_length=30)
+    height: float | None = Field(default=None, ge=0)
+    height_unit: Literal["cm", "in"] | None = None
+    weight: float | None = Field(default=None, ge=0)
+    weight_unit: Literal["kg", "lb"] | None = None
+    goal: str | None = Field(default=None, max_length=2000)
+
+
+# ---------- Personal bests (with cross-household ranking) ----------
+class PersonalBestOut(BaseModel):
+    exercise: str
+    value: float
+    unit: Literal["kg", "reps", "min", "km"]
+    rank: int | None = None  # null if no ranking (e.g. no other users have logged this exercise)
+    total_lifters: int | None = None
+    percentile: float | None = None
+    is_best: bool | None = None
+    leader_name: str | None = None
+    leader_value: float | None = None
+    leader_units: Literal["kg", "reps", "min", "km"] | None = None
 
 
 # ---------- Exercise ----------
@@ -116,4 +174,3 @@ class WorkoutSessionSummary(BaseModel):
     duration_minutes: int | None = None
     set_count: int = 0
     total_volume: float = 0
-    

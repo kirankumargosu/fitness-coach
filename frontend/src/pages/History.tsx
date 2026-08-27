@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { WorkoutSession, WorkoutSessionSummary } from "../api/types";
+import { useAuth } from "../context/AuthContext";
 import { useUsers } from "../context/UserContext";
 
 function formatDate(iso: string): string {
@@ -34,9 +35,11 @@ function formatMeasure(s: WorkoutSession["sets"][number]): string {
 
 function SessionDetail({
   sessionId,
+  canEdit,
   onDeleted,
 }: {
   sessionId: number;
+  canEdit: boolean;
   onDeleted: () => void;
 }) {
   const [session, setSession] = useState<WorkoutSession | null>(null);
@@ -88,20 +91,25 @@ function SessionDetail({
           </table>
         </div>
       ))}
-      <button
-        type="button"
-        className="ghost-btn danger"
-        onClick={handleDelete}
-        disabled={deleting}
-      >
-        {deleting ? "Deleting…" : "Delete session"}
-      </button>
+      {canEdit ? (
+        <button
+          type="button"
+          className="ghost-btn danger"
+          onClick={handleDelete}
+          disabled={deleting}
+        >
+          {deleting ? "Deleting…" : "Delete session"}
+        </button>
+      ) : (
+        <p className="view-only-note">View only — this isn't your data.</p>
+      )}
     </div>
   );
 }
 
 export function History() {
-  const { activeUser } = useUsers();
+  const { currentUser } = useAuth();
+  const { activeUser, users, setActiveUser } = useUsers();
   const [sessions, setSessions] = useState<WorkoutSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,58 +117,90 @@ export function History() {
     ? Number(searchParams.get("session"))
     : null;
 
+  const isAdmin = currentUser?.role === "admin";
+  // Members only ever see their own history. Admin can browse anyone's,
+  // via the picker below, defaulting to themselves.
+  const viewedUser = isAdmin ? activeUser ?? currentUser : currentUser;
+
+  const canEdit =
+    !!currentUser && !!viewedUser && (isAdmin || currentUser.id === viewedUser.id);
+
   const load = () => {
-    if (!activeUser) return;
+    if (!viewedUser) return;
     setLoading(true);
     api
-      .listSessions({ userId: activeUser.id })
+      .listSessions({ userId: viewedUser.id })
       .then(setSessions)
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [activeUser]);
+  useEffect(load, [viewedUser]);
 
   const toggle = (id: number) => {
     setSearchParams(expandedId === id ? {} : { session: String(id) });
   };
 
-  if (!activeUser) return null;
-  if (loading) return <p className="empty-state">Loading sessions…</p>;
-
-  if (sessions.length === 0) {
-    return (
-      <div className="empty-state">
-        <p>No sessions logged yet for {activeUser.name}.</p>
-        <p className="empty-state-sub">Head to "Log workout" to add the first one.</p>
-      </div>
-    );
-  }
+  if (!viewedUser) return null;
 
   return (
-    <div className="session-list">
-      {sessions.map((s) => (
-        <div className="session-card" key={s.id}>
-          <button
-            type="button"
-            className="session-card-header"
-            onClick={() => toggle(s.id)}
-            aria-expanded={expandedId === s.id}
+    <div>
+      {isAdmin && (
+        <label className="field admin-target-picker history-picker">
+          <span>Viewing</span>
+          <select
+            value={viewedUser.id}
+            onChange={(e) => {
+              const picked = users.find((u) => u.id === Number(e.target.value));
+              if (picked) setActiveUser(picked);
+            }}
           >
-            <div>
-              <h3>{s.title || "Workout"}</h3>
-              <span className="session-meta">{formatDate(s.date)}</span>
-            </div>
-            <div className="session-stats">
-              <span>{s.set_count} sets</span>
-              {s.total_volume > 0 ? <span>{Math.round(s.total_volume)} vol</span> : null}
-              {s.duration_minutes ? <span>{s.duration_minutes} min</span> : null}
-            </div>
-          </button>
-          {expandedId === s.id && (
-            <SessionDetail sessionId={s.id} onDeleted={load} />
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {loading ? (
+        <p className="empty-state">Loading sessions…</p>
+      ) : sessions.length === 0 ? (
+        <div className="empty-state">
+          <p>No sessions logged yet for {viewedUser.name}.</p>
+          {canEdit && (
+            <p className="empty-state-sub">Head to "Log workout" to add the first one.</p>
           )}
         </div>
-      ))}
+      ) : (
+        <div className="session-list">
+          {sessions.map((s) => (
+            <div className="session-card" key={s.id}>
+              <button
+                type="button"
+                className="session-card-header"
+                onClick={() => toggle(s.id)}
+                aria-expanded={expandedId === s.id}
+              >
+                <div>
+                  <h3>{formatDate(s.date)}</h3>
+                  <span className="session-meta">{s.title || "Workout"}</span>
+                </div>
+                <div className="session-stats">
+                  <span>{s.set_count} sets</span>
+                  {s.total_volume > 0 ? (
+                    <span>{Math.round(s.total_volume)} vol</span>
+                  ) : null}
+                  {s.duration_minutes ? <span>{s.duration_minutes} min</span> : null}
+                </div>
+              </button>
+              {expandedId === s.id && (
+                <SessionDetail sessionId={s.id} canEdit={canEdit} onDeleted={load} />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

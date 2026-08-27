@@ -2,19 +2,26 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import crud, models, schemas
+from app import auth, crud, models, schemas
 from app.database import get_db
 
 router = APIRouter(prefix="/api/exercises", tags=["exercises"])
 
 
 @router.get("", response_model=list[schemas.ExerciseOut])
-def list_exercises(db: Session = Depends(get_db)):
+def list_exercises(
+    db: Session = Depends(get_db),
+    _current_user: models.User = Depends(auth.get_current_user),
+):
     return crud.get_exercises(db)
 
 
 @router.post("", response_model=schemas.ExerciseOut, status_code=201)
-def create_exercise(payload: schemas.ExerciseCreate, db: Session = Depends(get_db)):
+def create_exercise(
+    payload: schemas.ExerciseCreate,
+    db: Session = Depends(get_db),
+    _current_user: models.User = Depends(auth.get_current_user),
+):
     exercise = models.Exercise(name=payload.name.strip(), category=payload.category)
     db.add(exercise)
     try:

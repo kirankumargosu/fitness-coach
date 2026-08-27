@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     environment:
       DB_PATH: /data/gym_tracker.db
+      ADMIN_USER: ${ADMIN_USER:-Kiran}
     volumes:
       - ${HOST_DATA_DIR:-/home/kiran/data}:/data
     expose:

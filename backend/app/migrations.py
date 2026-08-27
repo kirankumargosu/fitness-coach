@@ -67,4 +67,54 @@ def migrate_legacy_set_entries(engine: Engine) -> None:
                 """
             )
         )
-        conn.execute(text("DROP TABLE set_entries_legacy")) 
+        conn.execute(text("DROP TABLE set_entries_legacy"))
+
+
+def migrate_users_add_auth_columns(engine: Engine) -> None:
+    """Adds password_hash/salt/role to users if they're not there yet.
+    Unlike the set_entries migration, this is a plain ADD COLUMN — no
+    rebuild needed, since these are new nullable (or defaulted) columns
+    on an otherwise-unchanged table.
+    """
+    with engine.begin() as conn:
+        cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+        if not cols:
+            return  # table doesn't exist yet — create_all handles it
+
+        col_names = {c[1] for c in cols}
+        if "role" in col_names:
+            return  # already migrated
+
+        conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(200)"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN salt VARCHAR(64)"))
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN role VARCHAR(20) "
+                "NOT NULL DEFAULT 'member'"
+            )
+        )
+
+
+def migrate_users_add_profile_columns(engine: Engine) -> None:
+    """Adds first_name/last_name (avatar material) and the personal-details
+    profile columns (DOB, gender, height, weight, goal) if not there yet.
+    Same plain-ADD-COLUMN approach as the auth columns above.
+    """
+    with engine.begin() as conn:
+        cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+        if not cols:
+            return  # table doesn't exist yet — create_all handles it
+
+        col_names = {c[1] for c in cols}
+        if "goal" in col_names:
+            return  # already migrated
+
+        conn.execute(text("ALTER TABLE users ADD COLUMN first_name VARCHAR(50)"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN last_name VARCHAR(50)"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN date_of_birth DATE"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN gender VARCHAR(30)"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN height FLOAT"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN height_unit VARCHAR(4)"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN weight FLOAT"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN weight_unit VARCHAR(4)"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN goal TEXT"))

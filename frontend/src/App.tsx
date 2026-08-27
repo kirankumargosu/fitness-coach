@@ -1,13 +1,22 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Avatar } from "./components/Avatar";
+import { BottomNav } from "./components/BottomNav";
 import { ExerciseSuggestions } from "./components/ExerciseSuggestions";
-import { UserSwitch } from "./components/UserSwitch";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { UserProvider } from "./context/UserContext";
 import { History } from "./pages/History";
+import { Login } from "./pages/Login";
 import { LogWorkout } from "./pages/LogWorkout";
 import { PersonalBests } from "./pages/PersonalBests";
+import { ProfilePage } from "./pages/ProfilePage";
+import { Register } from "./pages/Register";
+import { UserProfile } from "./pages/UserProfile";
+import { Users } from "./pages/Users";
 import "./App.css";
 
 function AppShell() {
+  const { currentUser, logout } = useAuth();
+
   return (
     <>
       <header className="app-header">
@@ -15,39 +24,66 @@ function AppShell() {
           <span className="app-brand-mark" aria-hidden="true" />
           <h1>Fitness Coach</h1>
         </div>
-        <UserSwitch />
+        <div className="app-header-right">
+          {currentUser && (
+            <Link to="/profile" className="avatar-link" aria-label="Your details">
+              <Avatar user={currentUser} />
+            </Link>
+          )}
+          {currentUser && (
+            <button type="button" className="logout-btn" onClick={logout}>
+              Log out
+            </button>
+          )}
+        </div>
       </header>
 
-      <nav className="app-nav">
-        <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-          Log workout
-        </NavLink>
-        <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}>
-          History
-        </NavLink>
-        <NavLink to="/bests" className={({ isActive }) => (isActive ? "active" : "")}>
-          Personal bests
-        </NavLink>
-      </nav>
-
-      <main className="app-main">
+      <main className="app-main app-main-with-bottom-nav">
         <Routes>
           <Route path="/" element={<LogWorkout />} />
           <Route path="/history" element={<History />} />
           <Route path="/bests" element={<PersonalBests />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/users/:id" element={<UserProfile />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
+      <BottomNav />
       <ExerciseSuggestions />
     </>
   );
 }
 
-function App() {
+function Gate() {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <p className="empty-state">Loading…</p>;
+  }
+
+  if (!currentUser) {
+    return (
+      <Routes>
+        <Route path="/register" element={<Register />} />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
+  }
+
   return (
     <UserProvider>
       <AppShell />
     </UserProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   );
 }
 

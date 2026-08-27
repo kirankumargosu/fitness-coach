@@ -2,6 +2,7 @@ import axios from "axios";
 import type {
   Exercise,
   PersonalBest,
+  Profile,
   User,
   WorkoutSession,
   WorkoutSessionSummary,
@@ -9,7 +10,9 @@ import type {
 
 // In production, nginx proxies /api to the backend on the same origin.
 // In dev, Vite's proxy (see vite.config.ts) forwards /api to localhost:8000.
-const client = axios.create({ baseURL: "/api" });
+// withCredentials so the session cookie set by /api/auth/* is sent back
+// on every subsequent request.
+const client = axios.create({ baseURL: "/api", withCredentials: true });
 
 // Matches the backend's SetEntryCreate: at least one of reps/duration_seconds
 // must be present — the caller is responsible for that, the backend validates it.
@@ -25,14 +28,32 @@ interface SetPayload {
   notes?: string;
 }
 
+/** Extracts the backend's {"detail": "..."} message from an axios error, if present. */
+export function apiErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === "string") return detail;
+  }
+  return fallback;
+}
+
 export const api = {
   getUsers: () => client.get<User[]>("/users").then((r) => r.data),
 
-  // Who nginx's Basic Auth says we are, mapped to a known app user (or
-  // null if there's no match — e.g. local dev without nginx in front).
-  whoami: () =>
+  register: (name: string, password: string) =>
     client
-      .get<User | null>("/users/whoami")
+      .post<User>("/auth/register", { name, password })
+      .then((r) => r.data),
+
+  login: (name: string, password: string) =>
+    client.post<User>("/auth/login", { name, password }).then((r) => r.data),
+
+  logout: () => client.post("/auth/logout"),
+
+  // Who's currently logged in, or null if there's no active session.
+  me: () =>
+    client
+      .get<User>("/auth/me")
       .then((r) => r.data)
       .catch(() => null),
 
@@ -41,6 +62,14 @@ export const api = {
   getPersonalBests: (userId: number) =>
     client
       .get<PersonalBest[]>(`/users/${userId}/personal-bests`)
+      .then((r) => r.data),
+
+  getProfile: (userId: number) =>
+    client.get<Profile>(`/users/${userId}/profile`).then((r) => r.data),
+
+  updateProfile: (userId: number, payload: Partial<Profile>) =>
+    client
+      .patch<Profile>(`/users/${userId}/profile`, payload)
       .then((r) => r.data),
 
   listSessions: (params: { userId?: number; exerciseId?: number } = {}) =>

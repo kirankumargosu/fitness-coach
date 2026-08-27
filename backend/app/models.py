@@ -1,17 +1,19 @@
 """ORM models.
 
 Data shape:
-  User (Kiran / Tony)
+  User (any registered lifter)
     -> WorkoutSession (one gym visit: a date/time + optional title/notes)
         -> SetEntry (one logged set: exercise + set number + reps + weight)
 
 Exercise is a small reusable catalog (e.g. "Bench Press", "Squat") shared
-across both users so names stay consistent and can be picked from a list
+across all users so names stay consistent and can be picked from a list
 in the UI, while still allowing free-text entry of new exercises.
 """
+from datetime import date as date_
 from datetime import datetime
 
 from sqlalchemy import (
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -31,9 +33,39 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
+    # Auth. password_hash/salt are NULL until the person completes the
+    # one-time "register" step that claims their (pre-seeded) account.
+    password_hash: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    salt: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # "member" (default) can only create/edit/delete their own data.
+    # "admin" can do so for everyone. Set via the ADMIN_USER env var at
+    # startup (see main.py) — Kiran, by default.
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="member")
+
+    # Name components, used for avatar initials. Nullable — existing
+    # accounts (and the login/register name itself) don't require these.
+    first_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Personal details. Only ever exposed via the dedicated /profile
+    # endpoint (self or admin) — never included in the general user list,
+    # unlike first_name/last_name above which are just avatar material.
+    date_of_birth: Mapped[date_ | None] = mapped_column(Date, nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    height: Mapped[float | None] = mapped_column(Float, nullable=True)
+    height_unit: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    weight: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weight_unit: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    goal: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     sessions: Mapped[list["WorkoutSession"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+
+    @property
+    def has_password(self) -> bool:
+        """Whether this account has completed registration yet."""
+        return self.password_hash is not None
 
 
 class Exercise(Base):
@@ -104,3 +136,19 @@ class SetEntry(Base):
 
     session: Mapped["WorkoutSession"] = relationship(back_populates="sets")
     exercise: Mapped["Exercise"] = relationship(back_populates="set_entries")
+
+
+class AuthSession(Base):
+    """A logged-in browser session — deliberately named AuthSession (not
+    'Session') to avoid confusion with WorkoutSession. The token itself
+    (a long random string) is what's stored in the browser's cookie.
+    """
+
+    __tablename__ = "auth_sessions"
+
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

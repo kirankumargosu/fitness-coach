@@ -1,6 +1,24 @@
+export type UserRole = "member" | "admin";
+
 export interface User {
   id: number;
   name: string;
+  role: UserRole;
+  has_password: boolean;
+  first_name: string | null;
+  last_name: string | null;
+}
+
+export interface Profile {
+  first_name: string | null;
+  last_name: string | null;
+  date_of_birth: string | null; // "YYYY-MM-DD"
+  gender: string | null;
+  height: number | null;
+  height_unit: "cm" | "in" | null;
+  weight: number | null;
+  weight_unit: "kg" | "lb" | null;
+  goal: string | null;
 }
 
 export interface Exercise {
@@ -62,5 +80,12 @@ export interface DraftSet {
 export interface PersonalBest {
   exercise: string;
   value: number;
-  unit: "kg" | "reps";
+  unit: "kg" | "reps" | "min" | "km";
+  rank: number;
+  total_lifters: number
+  percentile: number
+  is_best: boolean
+  leader_name: string
+  leader_value: number
+  leader_units: "kg" | "reps" | "min" | "km";
 }

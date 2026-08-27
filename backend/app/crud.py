@@ -13,12 +13,15 @@ def get_user(db: Session, user_id: int) -> models.User | None:
     return db.get(models.User, user_id)
 
 
-def ensure_seed_users(db: Session, names: list[str]) -> None:
-    for name in names:
-        exists = db.query(models.User).filter(models.User.name == name).first()
-        if not exists:
-            db.add(models.User(name=name))
+def update_profile(
+    db: Session, user: models.User, payload: schemas.ProfileUpdate
+) -> models.User:
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(user, field, value)
     db.commit()
+    db.refresh(user)
+    return user
 
 
 # ---------- Exercises ----------
@@ -171,57 +174,167 @@ def get_set(db: Session, set_id: int) -> models.SetEntry | None:
 
 # ---------- Stats ----------
 # def personal_bests(db: Session, user_id: int) -> list[dict]:
-#     """Best (max weight) strength set per exercise for a given user.
-#     Cardio-only exercises (no weight logged) are excluded here — there's
-#     no weight PB to show for a jog.
-#     """
+#     """Best set per exercise for a given user."""
 #     rows = (
 #         db.query(
 #             models.Exercise.name,
 #             func.max(models.SetEntry.weight).label("max_weight"),
+#             func.max(models.SetEntry.reps).label("max_reps"),
+#             func.max(models.SetEntry.duration_seconds).label("max_duration"),
+#             func.max(models.SetEntry.distance).label("max_distance"),
 #         )
-#         .join(models.SetEntry, models.SetEntry.exercise_id == models.Exercise.id)
+#         .join(
+#             models.SetEntry,
+#             models.SetEntry.exercise_id == models.Exercise.id,
+#         )
 #         .join(
 #             models.WorkoutSession,
 #             models.WorkoutSession.id == models.SetEntry.session_id,
 #         )
 #         .filter(models.WorkoutSession.user_id == user_id)
-#         .filter(models.SetEntry.weight.isnot(None))
 #         .group_by(models.Exercise.name)
 #         .order_by(models.Exercise.name)
 #         .all()
 #     )
-#     return [{"exercise": name, "max_weight": max_weight} for name, max_weight in rows]
+
+#     return [
+#         {
+#             "exercise": name,
+#             "value": max_weight
+#             if max_weight and max_weight > 0
+#             else max_reps
+#             if max_reps and max_reps > 0
+#             else max_duration / 60
+#             if max_duration and max_duration > 0
+#             else max_distance,
+#             "unit": "kg"
+#             if max_weight and max_weight > 0
+#             else "reps"
+#             if max_reps and max_reps > 0
+#             else "min"
+#             if max_duration and max_duration > 0
+#             else "km",
+#         }
+#         for name, max_weight, max_reps, max_duration, max_distance in rows
+#     ]
+
+# ---------- Stats ----------
+LB_TO_KG = 0.45359237
+
+
+def _to_kg(weight: float, unit: str | None) -> float:
+    return weight * LB_TO_KG if unit == "lb" else weight
+
 
 def personal_bests(db: Session, user_id: int) -> list[dict]:
-    """Best set per exercise for a given user."""
+    """Return personal bests and rankings for weight, reps, distance, or time."""
     rows = (
         db.query(
             models.Exercise.name,
-            func.max(models.SetEntry.weight).label("max_weight"),
-            func.max(models.SetEntry.reps).label("max_reps"),
-            func.max(models.SetEntry.duration_seconds).label("max_duration"),
-            func.max(models.SetEntry.distance).label("max_distance"),
+            models.WorkoutSession.user_id,
+            models.User.name,
+            models.SetEntry.weight,
+            models.SetEntry.weight_unit,
+            models.SetEntry.reps,
+            models.SetEntry.duration_seconds,
+            models.SetEntry.distance,
+            models.SetEntry.distance_unit,
         )
-        .join(
-            models.SetEntry,
-            models.SetEntry.exercise_id == models.Exercise.id,
-        )
+        .select_from(models.SetEntry)
+        .join(models.Exercise, models.SetEntry.exercise_id == models.Exercise.id)
         .join(
             models.WorkoutSession,
             models.WorkoutSession.id == models.SetEntry.session_id,
         )
-        .filter(models.WorkoutSession.user_id == user_id)
-        .group_by(models.Exercise.name)
-        .order_by(models.Exercise.name)
+        .join(models.User, models.User.id == models.WorkoutSession.user_id)
         .all()
     )
 
-    return [
-        {
-            "exercise": name,
-            "value": max_weight if max_weight and max_weight > 0 else max_reps if max_reps and max_reps > 0 else max_duration/60 if max_duration and max_duration > 0 else max_distance,
-            "unit": "kg" if max_weight and max_weight > 0 else "reps" if max_reps and max_reps > 0 else "min" if max_duration/60 and max_duration > 0 else "km",
+    by_exercise: dict[str, dict[int, dict]] = {}
+    for exercise, uid, uname, weight, weight_unit, reps, duration, distance, distance_unit in rows:
+        bucket = by_exercise.setdefault(exercise, {})
+        best = bucket.setdefault(
+            uid,
+            {
+                "name": uname,
+                "weight": None,
+                "reps": None,
+                "distance": None,
+                "time": None,
+            },
+        )
+
+        if weight is not None:
+            weight_kg = _to_kg(weight, weight_unit)
+            if weight_kg > 0 and (
+                best["weight"] is None or weight_kg > best["weight"]
+            ):
+                best["weight"] = weight_kg
+        if reps is not None and reps > 0 and (
+            best["reps"] is None or reps > best["reps"]
+        ):
+            best["reps"] = reps
+        if distance is not None and distance > 0:
+            distance_km = distance * 1.609344 if distance_unit == "mi" else distance
+            if best["distance"] is None or distance_km > best["distance"]:
+                best["distance"] = distance_km
+        if duration is not None and duration > 0:
+            duration_minutes = duration / 60
+            if best["time"] is None or duration_minutes > best["time"]:
+                best["time"] = duration_minutes
+
+    def selected_best(best: dict) -> dict | None:
+        for key, unit in (
+            ("weight", "kg"),
+            ("reps", "reps"),
+            ("distance", "km"),
+            ("time", "min"),
+        ):
+            if best[key] is not None and best[key] > 0:
+                return {"value": best[key], "unit": unit, "metric": key}
+        return None
+
+    results = []
+    for exercise in sorted(by_exercise):
+        bucket = by_exercise[exercise]
+        selected = {
+            uid: selected_best(best)
+            for uid, best in bucket.items()
         }
-        for name, max_weight, max_reps, max_duration, max_distance in rows
-    ]
+        mine = selected.get(user_id)
+        if mine is None:
+            continue
+
+        comparable = [
+            (uid, value)
+            for uid, value in selected.items()
+            if value is not None and value["metric"] == mine["metric"]
+        ]
+        rank = 1 + sum(
+            1 for _, value in comparable if value["value"] > mine["value"]
+        )
+        total_lifters = len(comparable)
+        percentile = round(
+            sum(1 for _, value in comparable if value["value"] <= mine["value"])
+            / total_lifters
+            * 100
+        )
+        leader_uid, leader = max(comparable, key=lambda item: item[1]["value"])
+        is_best = rank == 1
+
+        results.append(
+            {
+                "exercise": exercise,
+                "value": mine["value"],
+                "unit": mine["unit"],
+                "rank": rank,
+                "total_lifters": total_lifters,
+                "percentile": percentile,
+                "is_best": is_best,
+                "leader_name": bucket[leader_uid]["name"] if not is_best else None,
+                "leader_value": leader["value"] if not is_best else None,
+                "leader_units": leader["unit"] if not is_best else None,
+            }
+        )
+    print("Personal bests:", results)
+    return results

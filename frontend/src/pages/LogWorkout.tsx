@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api/client";
+import { api, apiErrorMessage } from "../api/client";
 import type { DraftSet, SetKind } from "../api/types";
+import { useAuth } from "../context/AuthContext";
 import { useUsers } from "../context/UserContext";
 import { userColor } from "../lib/userColor";
 
@@ -27,10 +28,16 @@ function emptySet(setNumber: number, kind: SetKind = "strength"): DraftSet {
 }
 
 export function LogWorkout() {
-  const { activeUser } = useUsers();
+  const { currentUser } = useAuth();
+  const { activeUser, users, setActiveUser } = useUsers();
   const navigate = useNavigate();
 
-  const [title, setTitle] = useState("");
+  const isAdmin = currentUser?.role === "admin";
+  // Members can only ever log for themselves. Admin can log for whoever
+  // is currently selected in the header switch (defaults to themselves).
+  const logTarget = isAdmin ? activeUser ?? currentUser : currentUser;
+
+  // const [title, setTitle] = useState("");
   const [date, setDate] = useState(toLocalDatetimeInputValue(new Date()));
   // const [duration, setDuration] = useState<string>("");
   // const [notes, setNotes] = useState("");
@@ -71,7 +78,7 @@ export function LogWorkout() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeUser) return;
+    if (!logTarget) return;
 
     const validSets = sets.filter((s) => s.exercise_name.trim().length > 0);
     if (validSets.length === 0) {
@@ -83,8 +90,8 @@ export function LogWorkout() {
     setError(null);
     try {
       const session = await api.createSession({
-        user_id: activeUser.id,
-        title: title.trim() || undefined,
+        user_id: logTarget.id,
+        // title: title.trim() || undefined,
         date: new Date(date).toISOString(),
         // duration_minutes: duration ? Number(duration) : undefined,
         // notes: notes.trim() || undefined,
@@ -107,14 +114,14 @@ export function LogWorkout() {
         ),
       });
       navigate(`/history?session=${session.id}`);
-    } catch {
-      setError("Couldn't save that session — check the fields and try again.");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Couldn't save that session — check the fields and try again."));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (!activeUser) {
+  if (!logTarget) {
     return <p className="empty-state">Loading lifters…</p>;
   }
 
@@ -122,20 +129,39 @@ export function LogWorkout() {
     <form className="log-form" onSubmit={handleSubmit}>
       <div className="log-form-header">
         <h2>Log a session</h2>
-        <span className="pill" style={{ borderColor: userColor(activeUser) }}>
-          Logging for <strong>{activeUser.name}</strong>
-        </span>
+        {isAdmin ? (
+          <label className="field admin-target-picker">
+            <span>Logging for</span>
+            <select
+              value={logTarget.id}
+              onChange={(e) => {
+                const picked = users.find((u) => u.id === Number(e.target.value));
+                if (picked) setActiveUser(picked);
+              }}
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <span className="pill" style={{ borderColor: userColor(logTarget) }}>
+            Logging for <strong>{logTarget.name}</strong>
+          </span>
+        )}
       </div>
 
       <div className="field-grid">
-        <label className="field">
+        {/* <label className="field">
           <span>Title</span>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Push day, Leg day, Morning run…"
           />
-        </label>
+        </label> */}
         <label className="field">
           <span>Date &amp; time</span>
           <input
