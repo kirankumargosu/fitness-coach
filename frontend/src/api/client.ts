@@ -13,6 +13,8 @@ import type {
   Leaderboard,
   NutritionEntry,
   NutritionSummary,
+  WaterEntry,
+  WaterSummary,
 } from "./types";
 
 // In production, nginx proxies /api to the backend on the same origin.
@@ -172,4 +174,17 @@ export const api = {
       .then((r) => r.data),
 
   deleteNutritionEntry: (id: number) => client.delete(`/nutrition/${id}`),
+
+  createWaterEntry: (payload: { amount_ml: number; timestamp?: string }) =>
+  client.post<WaterEntry>("/water", payload).then((r) => r.data),
+
+  listWaterEntries: (params: { start?: string; end?: string } = {}) =>
+    client.get<WaterEntry[]>("/water", { params }).then((r) => r.data),
+
+  getWaterSummary: (date: string) =>
+    client
+      .get<WaterSummary>("/water/summary", { params: { date } })
+      .then((r) => r.data),
+
+  deleteWaterEntry: (id: number) => client.delete(`/water/${id}`),
 };

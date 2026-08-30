@@ -288,3 +288,19 @@ class NutritionSummaryOut(BaseModel):
     saturated_fat_g: float
     unsaturated_fat_g: float
     entry_count: int
+
+# Water
+class WaterEntryCreate(BaseModel):
+    amount_ml: float = Field(gt=0, le=5000)
+    timestamp: datetime | None = None  # defaults to now if not given
+
+class WaterEntryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    amount_ml: float
+    timestamp: datetime
+
+class WaterSummaryOut(BaseModel):
+    date: date
+    total_ml: float
+    entry_count: int

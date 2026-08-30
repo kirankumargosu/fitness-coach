@@ -12,7 +12,7 @@ from app.migrations import (
     migrate_users_add_profile_columns,
 )
 from app.routers import auth as auth_router
-from app.routers import challenges, exercises, metrics, nutrition, users, workouts
+from app.routers import challenges, exercises, metrics, nutrition, users, water, workouts
 import os
 
 # Registration is open — anyone can create an account with any name (see
@@ -72,6 +72,7 @@ app.include_router(workouts.router)
 app.include_router(metrics.router)
 app.include_router(challenges.router)
 app.include_router(nutrition.router)
+app.include_router(water.router)
 
 
 @app.get("/api/health")

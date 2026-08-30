@@ -16,6 +16,7 @@ import { Metrics } from "./pages/Metrics";
 import { Challenges } from "./pages/Challanges";
 import { ChallengeDetail } from "./pages/ChallangeDetail";
 import { Nutrition } from "./pages/Nutrition";
+import { WaterIntake } from "./pages/WaterIntake";
 
 import "./App.css";
 
@@ -56,6 +57,7 @@ function AppShell() {
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/challenges/:id" element={<ChallengeDetail />} />
           <Route path="/nutrition" element={<Nutrition />} />
+          <Route path="/nutrition/water" element={<WaterIntake />} />
         </Routes>
       </main>
 

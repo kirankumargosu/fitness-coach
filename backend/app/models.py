@@ -249,3 +249,22 @@ class NutritionEntry(Base):
     )
 
     user: Mapped["User"] = relationship()
+
+# Water
+class WaterEntry(Base):
+    """One 'I drank X ml' tap. Deliberately just an amount + timestamp —
+    no daily row to upsert, no unit conversion — daily totals are summed
+    on the fly (see crud.water_summary). Private, same rule as nutrition
+    and body metrics.
+    """
+
+    __tablename__ = "water_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    amount_ml: Mapped[float] = mapped_column(Float, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    user: Mapped["User"] = relationship()

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, apiErrorMessage } from "../api/client";
 import type { NutritionEntry, NutritionSummary } from "../api/types";
 import { useAuth } from "../context/AuthContext";
+import { NutritionSubNav } from "../components/NutritionSubNav";
 
 function todayLocal(): string {
   const d = new Date();
@@ -130,6 +131,7 @@ export function Nutrition() {
 
   return (
     <div>
+      <NutritionSubNav />
       <div className="log-form-header">
         <h2>Nutrition</h2>
         <input

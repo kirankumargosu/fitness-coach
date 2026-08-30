@@ -225,7 +225,7 @@ const TABS = [
     to: "/nutrition",
     label: "Nutrition",
     Icon: NutritionIcon,
-    isActive: (p: string) => p === "/nutrition"
+    isActive: (p: string) => p === "/nutrition" || p.startsWith("/nutrition/"),
   }
 ] as const;
 

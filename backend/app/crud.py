@@ -470,3 +470,60 @@ def nutrition_summary(db: Session, user_id: int, day) -> dict:
         "unsaturated_fat_g": sum(e.unsaturated_fat_g for e in entries),
         "entry_count": len(entries),
     }
+
+# Water
+
+def create_water_entry(
+    db: Session, user_id: int, payload: schemas.WaterEntryCreate
+) -> models.WaterEntry:
+    entry = models.WaterEntry(
+        user_id=user_id,
+        amount_ml=payload.amount_ml,
+        timestamp=payload.timestamp or datetime.utcnow(),
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+def list_water_entries(
+    db: Session,
+    user_id: int,
+    start: datetime | None = None,
+    end: datetime | None = None,
+) -> list[models.WaterEntry]:
+    query = db.query(models.WaterEntry).filter(models.WaterEntry.user_id == user_id)
+    if start is not None:
+        query = query.filter(models.WaterEntry.timestamp >= start)
+    if end is not None:
+        query = query.filter(models.WaterEntry.timestamp < end)
+    return query.order_by(models.WaterEntry.timestamp.desc()).all()
+
+
+def get_water_entry(db: Session, entry_id: int) -> models.WaterEntry | None:
+    return db.get(models.WaterEntry, entry_id)
+
+
+def delete_water_entry(db: Session, entry: models.WaterEntry) -> None:
+    db.delete(entry)
+    db.commit()
+
+
+def water_summary(db: Session, user_id: int, day) -> dict:
+    start_dt = datetime.combine(day, datetime.min.time())
+    end_dt = start_dt + timedelta(days=1)
+    entries = (
+        db.query(models.WaterEntry)
+        .filter(
+            models.WaterEntry.user_id == user_id,
+            models.WaterEntry.timestamp >= start_dt,
+            models.WaterEntry.timestamp < end_dt,
+        )
+        .all()
+    )
+    return {
+        "date": day,
+        "total_ml": sum(e.amount_ml for e in entries),
+        "entry_count": len(entries),
+    }

@@ -159,3 +159,15 @@ export interface NutritionSummary {
   unsaturated_fat_g: number;
   entry_count: number;
 }
+
+export interface WaterEntry {
+  id: number;
+  amount_ml: number;
+  timestamp: string; // ISO datetime
+}
+
+export interface WaterSummary {
+  date: string; // "YYYY-MM-DD"
+  total_ml: number;
+  entry_count: number;
+}

@@ -1301,3 +1301,93 @@ select:focus {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+/* ---------- Water intake ---------- */
+.water-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 2rem 0 1.5rem;
+}
+
+.water-total-value {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  color: var(--kiran);
+  line-height: 1;
+}
+
+.water-total-unit {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chalk-dim);
+}
+
+.water-quick-add {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.water-quick-btn {
+  flex: 1 1 0;
+  max-width: 8rem;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 0.8rem 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--chalk);
+  cursor: pointer;
+}
+
+.water-quick-btn:active {
+  border-color: var(--kiran);
+  color: var(--kiran);
+}
+
+.water-custom-form {
+  display: flex;
+  gap: 0.6rem;
+  max-width: 20rem;
+  margin: 0 auto 1.75rem;
+}
+
+.water-custom-form input {
+  flex: 1 1 auto;
+}
+
+.water-custom-form .ghost-btn {
+  margin-top: 0;
+  flex: none;
+}
+
+.water-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: 20rem;
+  margin: 0 auto;
+}
+
+.water-log-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.water-log-row .session-meta {
+  flex: 1 1 auto;
+  text-align: right;
+}
