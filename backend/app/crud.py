@@ -1,5 +1,6 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
+from datetime import datetime, timedelta
 
 from app import models, schemas
 
@@ -41,8 +42,11 @@ def get_or_create_exercise(
     if not exercise_name or not exercise_name.strip():
         raise ValueError("Either exercise_id or exercise_name must be provided")
 
-    name = exercise_name.strip()
-    exercise = db.query(models.Exercise).filter(models.Exercise.name == name).first()
+    name = exercise_name.strip().title()
+    # exercise = db.query(models.Exercise).filter(models.Exercise.name == name).first()
+    exercise = (
+        db.query(models.Exercise).filter(models.Exercise.name.ilike(name)).first()
+    )
     if exercise is None:
         exercise = models.Exercise(name=name)
         db.add(exercise)
@@ -171,53 +175,6 @@ def delete_set(db: Session, set_entry: models.SetEntry) -> None:
 def get_set(db: Session, set_id: int) -> models.SetEntry | None:
     return db.get(models.SetEntry, set_id)
 
-
-# ---------- Stats ----------
-# def personal_bests(db: Session, user_id: int) -> list[dict]:
-#     """Best set per exercise for a given user."""
-#     rows = (
-#         db.query(
-#             models.Exercise.name,
-#             func.max(models.SetEntry.weight).label("max_weight"),
-#             func.max(models.SetEntry.reps).label("max_reps"),
-#             func.max(models.SetEntry.duration_seconds).label("max_duration"),
-#             func.max(models.SetEntry.distance).label("max_distance"),
-#         )
-#         .join(
-#             models.SetEntry,
-#             models.SetEntry.exercise_id == models.Exercise.id,
-#         )
-#         .join(
-#             models.WorkoutSession,
-#             models.WorkoutSession.id == models.SetEntry.session_id,
-#         )
-#         .filter(models.WorkoutSession.user_id == user_id)
-#         .group_by(models.Exercise.name)
-#         .order_by(models.Exercise.name)
-#         .all()
-#     )
-
-#     return [
-#         {
-#             "exercise": name,
-#             "value": max_weight
-#             if max_weight and max_weight > 0
-#             else max_reps
-#             if max_reps and max_reps > 0
-#             else max_duration / 60
-#             if max_duration and max_duration > 0
-#             else max_distance,
-#             "unit": "kg"
-#             if max_weight and max_weight > 0
-#             else "reps"
-#             if max_reps and max_reps > 0
-#             else "min"
-#             if max_duration and max_duration > 0
-#             else "km",
-#         }
-#         for name, max_weight, max_reps, max_duration, max_distance in rows
-#     ]
-
 # ---------- Stats ----------
 LB_TO_KG = 0.45359237
 
@@ -338,3 +295,178 @@ def personal_bests(db: Session, user_id: int) -> list[dict]:
         )
     print("Personal bests:", results)
     return results
+
+
+# Metrics
+def get_latest_metric(db: Session, user_id: int) -> models.BodyMetric | None:
+    return (
+        db.query(models.BodyMetric)
+        .filter(models.BodyMetric.user_id == user_id)
+        .order_by(models.BodyMetric.date.desc())
+        .first()
+    )
+
+
+def list_metrics(db: Session, user_id: int, limit: int = 180) -> list[models.BodyMetric]:
+    return (
+        db.query(models.BodyMetric)
+        .filter(models.BodyMetric.user_id == user_id)
+        .order_by(models.BodyMetric.date.asc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_metric(db: Session, metric_id: int) -> models.BodyMetric | None:
+    return db.get(models.BodyMetric, metric_id)
+
+
+def upsert_metric(db: Session, payload: schemas.BodyMetricCreate) -> models.BodyMetric:
+    existing = (
+        db.query(models.BodyMetric)
+        .filter(
+            models.BodyMetric.user_id == payload.user_id,
+            models.BodyMetric.date == payload.date,
+        )
+        .first()
+    )
+    data = payload.model_dump(exclude={"user_id"})
+    if existing is not None:
+        for field, value in data.items():
+            setattr(existing, field, value)
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    metric = models.BodyMetric(user_id=payload.user_id, **data)
+    db.add(metric)
+    db.commit()
+    db.refresh(metric)
+    return metric
+
+
+def delete_metric(db: Session, metric: models.BodyMetric) -> None:
+    db.delete(metric)
+    db.commit()
+
+
+# --------- Challenges ----------
+def create_challenge(
+    db: Session, creator_id: int, payload: schemas.ChallengeCreate
+) -> models.Challenge:
+    challenge = models.Challenge(
+        name=payload.name,
+        type=payload.type,
+        exercise_name=payload.exercise_name,
+        start_date=payload.start_date,
+        end_date=payload.end_date,
+        created_by=creator_id,
+    )
+    db.add(challenge)
+    db.flush()
+    for uid in payload.participant_user_ids:
+        db.add(models.ChallengeParticipant(challenge_id=challenge.id, user_id=uid))
+    db.commit()
+    db.refresh(challenge)
+    return challenge
+
+
+def _challenge_query(db: Session):
+    return db.query(models.Challenge).options(
+        joinedload(models.Challenge.participants).joinedload(
+            models.ChallengeParticipant.user
+        )
+    )
+
+def list_challenges(db: Session) -> list[models.Challenge]:
+    return _challenge_query(db).order_by(models.Challenge.start_date.desc()).all()
+
+
+def get_challenge(db: Session, challenge_id: int) -> models.Challenge | None:
+    return _challenge_query(db).filter(models.Challenge.id == challenge_id).first()
+
+
+def delete_challenge(db: Session, challenge: models.Challenge) -> None:
+    db.delete(challenge)
+    db.commit()
+
+# --------- Nutrition ----------
+def create_nutrition_entry(
+    db: Session,
+    user_id: int,
+    payload: schemas.NutritionEntryCreate,
+    estimate: dict,
+) -> models.NutritionEntry:
+    entry = models.NutritionEntry(
+        user_id=user_id,
+        description=estimate.get("food") or payload.description,
+        timestamp=payload.timestamp or datetime.utcnow(),
+        calories=estimate["calories"],
+        protein_g=estimate["protein_g"],
+        carbs_g=estimate["carbs_g"],
+        saturated_fat_g=estimate["saturated_fat_g"],
+        unsaturated_fat_g=estimate["unsaturated_fat_g"],
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+def list_nutrition_entries(
+    db: Session,
+    user_id: int,
+    start: datetime | None = None,
+    end: datetime | None = None,
+) -> list[models.NutritionEntry]:
+    query = db.query(models.NutritionEntry).filter(
+        models.NutritionEntry.user_id == user_id
+    )
+    if start is not None:
+        query = query.filter(models.NutritionEntry.timestamp >= start)
+    if end is not None:
+        query = query.filter(models.NutritionEntry.timestamp < end)
+    return query.order_by(models.NutritionEntry.timestamp.desc()).all()
+
+
+def get_nutrition_entry(db: Session, entry_id: int) -> models.NutritionEntry | None:
+    return db.get(models.NutritionEntry, entry_id)
+
+
+def update_nutrition_entry(
+    db: Session, entry: models.NutritionEntry, payload: schemas.NutritionEntryUpdate
+) -> models.NutritionEntry:
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(entry, field, value)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+def delete_nutrition_entry(db: Session, entry: models.NutritionEntry) -> None:
+    db.delete(entry)
+    db.commit()
+
+
+def nutrition_summary(db: Session, user_id: int, day) -> dict:
+    start_dt = datetime.combine(day, datetime.min.time())
+    end_dt = start_dt + timedelta(days=1)
+    entries = (
+        db.query(models.NutritionEntry)
+        .filter(
+            models.NutritionEntry.user_id == user_id,
+            models.NutritionEntry.timestamp >= start_dt,
+            models.NutritionEntry.timestamp < end_dt,
+        )
+        .all()
+    )
+    return {
+        "date": day,
+        "calories": sum(e.calories for e in entries),
+        "protein_g": sum(e.protein_g for e in entries),
+        "carbs_g": sum(e.carbs_g for e in entries),
+        "saturated_fat_g": sum(e.saturated_fat_g for e in entries),
+        "unsaturated_fat_g": sum(e.unsaturated_fat_g for e in entries),
+        "entry_count": len(entries),
+    }

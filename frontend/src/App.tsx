@@ -12,6 +12,11 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { Register } from "./pages/Register";
 import { UserProfile } from "./pages/UserProfile";
 import { Users } from "./pages/Users";
+import { Metrics } from "./pages/Metrics";
+import { Challenges } from "./pages/Challanges";
+import { ChallengeDetail } from "./pages/ChallangeDetail";
+import { Nutrition } from "./pages/Nutrition";
+
 import "./App.css";
 
 function AppShell() {
@@ -46,7 +51,11 @@ function AppShell() {
           <Route path="/users" element={<Users />} />
           <Route path="/users/:id" element={<UserProfile />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/metrics" element={<Metrics />} />
           <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/challenges" element={<Challenges />} />
+          <Route path="/challenges/:id" element={<ChallengeDetail />} />
+          <Route path="/nutrition" element={<Nutrition />} />
         </Routes>
       </main>
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app import auth, crud, models, schemas
+from app import auth, badges, crud, models, schemas
 from app.database import get_db
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -29,6 +29,18 @@ def get_personal_bests(
         raise HTTPException(status_code=404, detail="User not found")
     return crud.personal_bests(db, user_id)
 
+@router.get("/{user_id}/badges", response_model=list[schemas.BadgeOut])
+def get_badges(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _current_user: models.User = Depends(auth.get_current_user),
+):
+    # Open to anyone logged in, same as personal bests — badges are meant
+    # to be shown off, not private.
+    user = crud.get_user(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return badges.compute_badges(db, user)
 
 @router.get("/{user_id}/profile", response_model=schemas.ProfileOut)
 def get_profile(

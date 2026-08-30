@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import type { WorkoutSession, WorkoutSessionSummary } from "../api/types";
 import { useAuth } from "../context/AuthContext";
 import { useUsers } from "../context/UserContext";
+import { WorkoutSubNav } from "../components/WorkoutSubNav";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -144,6 +145,7 @@ export function History() {
 
   return (
     <div>
+      <WorkoutSubNav />
       {isAdmin && (
         <label className="field admin-target-picker history-picker">
           <span>Viewing</span>

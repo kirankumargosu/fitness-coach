@@ -152,3 +152,100 @@ class AuthSession(Base):
         DateTime, default=datetime.utcnow, nullable=False
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+class BodyMetric(Base):
+    """A daily body-composition reading — from a smart scale, typically.
+    Private data: only the owner and admin can see it (same rule as
+    Profile's personal details), unlike lift weights, which are shared.
+    One entry per user per date — logging again for the same date
+    updates that entry instead of creating a duplicate.
+    """
+
+    __tablename__ = "body_metrics"
+    __table_args__ = (
+        UniqueConstraint("user_id", "date", name="uq_user_metric_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    date: Mapped[date_] = mapped_column(Date, nullable=False)
+
+    weight: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weight_unit: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    muscle_mass: Mapped[float | None] = mapped_column(Float, nullable=True)
+    body_fat_percentage: Mapped[float | None] = mapped_column(Float, nullable=True)
+    visceral_fat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    water_percentage: Mapped[float | None] = mapped_column(Float, nullable=True)
+    protein_percentage: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    user: Mapped["User"] = relationship()
+
+class Challenge(Base):
+    """A time-boxed competition among 2+ users. Head-to-head and group
+    challenges are the same thing here — just a different participant
+    count. Scores are never stored; they're computed live from existing
+    workout data for the challenge's date window (see app/challenges.py),
+    same philosophy as badges — nothing to keep in sync, nothing to go
+    stale.
+    """
+
+    __tablename__ = "challenges"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # "volume" | "exercise" | "consistency" — see app/challenges.py
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Only set (and only meaningful) for type == "exercise"
+    exercise_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    start_date: Mapped[date_] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date_] = mapped_column(Date, nullable=False)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    participants: Mapped[list["ChallengeParticipant"]] = relationship(
+        back_populates="challenge", cascade="all, delete-orphan"
+    )
+
+
+class ChallengeParticipant(Base):
+    __tablename__ = "challenge_participants"
+    __table_args__ = (
+        UniqueConstraint("challenge_id", "user_id", name="uq_challenge_participant"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    challenge_id: Mapped[int] = mapped_column(
+        ForeignKey("challenges.id"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+    challenge: Mapped["Challenge"] = relationship(back_populates="participants")
+    user: Mapped["User"] = relationship()
+
+# Nutrition
+class NutritionEntry(Base):
+    """A logged food entry. `description` is what the person actually
+    typed (or an AI-cleaned version of it); the macro fields are an LLM
+    estimate made at creation time (see app/nutrition_ai.py) and are
+    freely editable afterward, since AI estimates are a starting point,
+    not ground truth. Private data, same rule as body metrics.
+    """
+
+    __tablename__ = "nutrition_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    calories: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    protein_g: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    carbs_g: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    saturated_fat_g: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    unsaturated_fat_g: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    user: Mapped["User"] = relationship()

@@ -19,10 +19,10 @@ manages their own workout log; one designated admin can manage everyone's.
   outside ──────▶│  nginx (edge, port 6060)│   <- only published port
                  └──────────┬──────────────┘
                     /api/*  │  everything else
-                 ┌──────────▼──────┐   ┌───────────────┐
+                 ┌──────────▼───────┐   ┌────────────────┐
                  │ backend          │   │ frontend       │
                  │ FastAPI :8000    │   │ nginx+SPA :80  │
-                 └────────┬─────────┘   └───────────────┘
+                 └────────┬─────────┘   └────────────────┘
                           │
                  ┌────────▼─────────┐
                  │ SQLite (volume)  │

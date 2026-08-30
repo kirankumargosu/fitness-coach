@@ -19,7 +19,9 @@ export function Users() {
 
   if (loading) return <p className="empty-state">Loading lifters…</p>;
 
-  if (users.length === 0) {
+  const members = users.filter((user) => user.role === "member");
+
+  if (members.length === 0) {
     return <p className="empty-state">No one's registered yet.</p>;
   }
 
@@ -27,7 +29,7 @@ export function Users() {
     <div>
       <h2 className="section-label">Lifters</h2>
       <div className="user-directory">
-        {users.map((u) => (
+        {members.map((u) => (
           <Link to={`/users/${u.id}`} className="user-directory-card" key={u.id}>
             <Avatar user={u} size={32} />
             <span className="user-directory-name">

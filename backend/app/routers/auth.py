@@ -82,6 +82,24 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     token = request.cookies.get(auth.SESSION_COOKIE_NAME)
     auth.destroy_session(db, token, response)
 
+@router.post("/change-password", status_code=204)
+def change_password(
+    payload: schemas.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    # Self only, no admin override — proving you know the current
+    # password is the whole point, regardless of role.
+    if not current_user.has_password or not auth.verify_password(
+        payload.current_password, current_user.salt, current_user.password_hash
+    ):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+    current_user.salt = auth.make_salt()
+    current_user.password_hash = auth.hash_password(
+        payload.new_password, current_user.salt
+    )
+    db.commit()
 
 @router.get("/me", response_model=schemas.UserOut)
 def me(user: models.User = Depends(auth.get_current_user)):

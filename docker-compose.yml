@@ -6,6 +6,10 @@ services:
     environment:
       DB_PATH: /data/gym_tracker.db
       ADMIN_USER: ${ADMIN_USER:-Kiran}
+      # Needed for the nutrition tracker specifically — everything else
+      # in the app works fine without it. Set in .env.
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
     volumes:
       - ${HOST_DATA_DIR:-/home/kiran/data}:/data
     expose:

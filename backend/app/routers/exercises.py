@@ -22,6 +22,11 @@ def create_exercise(
     db: Session = Depends(get_db),
     _current_user: models.User = Depends(auth.get_current_user),
 ):
+    name = payload.name.strip()
+    existing = db.query(models.Exercise).filter(models.Exercise.name.ilike(name)).first()
+    if existing is not None:
+        return existing
+
     exercise = models.Exercise(name=payload.name.strip(), category=payload.category)
     db.add(exercise)
     try:

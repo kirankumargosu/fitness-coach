@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { PersonalBestsView } from "../components/PersonalBestsView";
+import { BadgesView } from "../components/BadgesView";
 import type { User } from "../api/types";
 
 export function UserProfile() {
@@ -38,13 +39,29 @@ export function UserProfile() {
 
   return (
     <div>
-      <div className="profile-header">
+      {/* <div className="profile-header">
         <Link to="/users" className="back-link">
           ← All lifters
         </Link>
-        <h2 className="section-label">{user.name}'s personal bests</h2>
+        <h2>{user.name}'s Achievements</h2>
+      </div> */}
+
+
+      <div className="log-form-header">
+        <Link to="/users" className="back-link">
+          ← All lifters
+        </Link>
+        <h2>{user.name}'s Achievements</h2>
       </div>
-      <PersonalBestsView user={user} />
+
+      <details className="personal-bests-entry">
+        <summary>Badges</summary>
+        <BadgesView user={user} />
+      </details>
+      <details className="personal-bests-entry">
+        <summary>Personal Bests</summary>
+        <PersonalBestsView user={user} />
+      </details>
     </div>
   );
 }

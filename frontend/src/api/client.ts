@@ -6,6 +6,13 @@ import type {
   User,
   WorkoutSession,
   WorkoutSessionSummary,
+  BodyMetric,
+  Badge,
+  Challenge,
+  ChallengeType,
+  Leaderboard,
+  NutritionEntry,
+  NutritionSummary,
 } from "./types";
 
 // In production, nginx proxies /api to the backend on the same origin.
@@ -50,6 +57,9 @@ export const api = {
 
   logout: () => client.post("/auth/logout"),
 
+  changePassword: (current_password: string, new_password: string) =>
+    client.post("/auth/change-password", { current_password, new_password }),
+
   // Who's currently logged in, or null if there's no active session.
   me: () =>
     client
@@ -64,6 +74,9 @@ export const api = {
       .get<PersonalBest[]>(`/users/${userId}/personal-bests`)
       .then((r) => r.data),
 
+  getBadges: (userId: number) =>
+    client.get<Badge[]>(`/users/${userId}/badges`).then((r) => r.data),
+  
   getProfile: (userId: number) =>
     client.get<Profile>(`/users/${userId}/profile`).then((r) => r.data),
 
@@ -98,4 +111,65 @@ export const api = {
 
   deleteSet: (sessionId: number, setId: number) =>
     client.delete(`/sessions/${sessionId}/sets/${setId}`),
+
+  getLatestMetric: (userId: number) =>
+    client
+      .get<BodyMetric | null>("/metrics/latest", { params: { user_id: userId } })
+      .then((r) => r.data),
+
+  listMetrics: (userId: number) =>
+    client
+      .get<BodyMetric[]>("/metrics", { params: { user_id: userId } })
+      .then((r) => r.data),
+
+  upsertMetric: (payload: {
+    user_id: number;
+    date: string;
+    weight?: number;
+    weight_unit?: "kg" | "lb";
+    muscle_mass?: number;
+    body_fat_percentage?: number;
+    visceral_fat?: number;
+    water_percentage?: number;
+    protein_percentage?: number;
+  }) => client.post<BodyMetric>("/metrics", payload).then((r) => r.data),
+
+  listChallenges: () => client.get<Challenge[]>("/challenges").then((r) => r.data),
+
+  getChallenge: (id: number) =>
+    client.get<Challenge>(`/challenges/${id}`).then((r) => r.data),
+
+  getLeaderboard: (id: number) =>
+    client.get<Leaderboard>(`/challenges/${id}/leaderboard`).then((r) => r.data),
+
+  createChallenge: (payload: {
+    name: string;
+    type: ChallengeType;
+    exercise_name?: string;
+    start_date: string;
+    end_date: string;
+    participant_user_ids: number[];
+  }) => client.post<Challenge>("/challenges", payload).then((r) => r.data),
+
+  deleteChallenge: (id: number) => client.delete(`/challenges/${id}`),
+
+  createNutritionEntry: (payload: { description: string; timestamp?: string }) =>
+  client.post<NutritionEntry>("/nutrition", payload).then((r) => r.data),
+
+  listNutritionEntries: (params: { start?: string; end?: string } = {}) =>
+    client
+      .get<NutritionEntry[]>("/nutrition", { params })
+      .then((r) => r.data),
+
+  getNutritionSummary: (date: string) =>
+    client
+      .get<NutritionSummary>("/nutrition/summary", { params: { date } })
+      .then((r) => r.data),
+
+  updateNutritionEntry: (id: number, payload: Partial<NutritionEntry>) =>
+    client
+      .patch<NutritionEntry>(`/nutrition/${id}`, payload)
+      .then((r) => r.data),
+
+  deleteNutritionEntry: (id: number) => client.delete(`/nutrition/${id}`),
 };

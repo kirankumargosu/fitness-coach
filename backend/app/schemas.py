@@ -28,6 +28,9 @@ class LoginRequest(BaseModel):
     name: str
     password: str
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=4, max_length=200)
 
 # ---------- Profile (personal details) ----------
 class ProfileOut(BaseModel):
@@ -68,6 +71,14 @@ class PersonalBestOut(BaseModel):
     leader_value: float | None = None
     leader_units: Literal["kg", "reps", "min", "km"] | None = None
 
+# ---------- Badges ----------
+class BadgeOut(BaseModel):
+    key: str
+    name: str
+    description: str
+    emoji: str
+    earned: bool
+    detail: str = ""
 
 # ---------- Exercise ----------
 class ExerciseCreate(BaseModel):
@@ -174,3 +185,106 @@ class WorkoutSessionSummary(BaseModel):
     duration_minutes: int | None = None
     set_count: int = 0
     total_volume: float = 0
+
+# ---------- Body Metrics ----------
+class BodyMetricCreate(BaseModel):
+    user_id: int
+    date: date
+    weight: float | None = Field(default=None, ge=0)
+    weight_unit: Literal["kg", "lb"] | None = None
+    muscle_mass: float | None = Field(default=None, ge=0)
+    body_fat_percentage: float | None = Field(default=None, ge=0, le=100)
+    visceral_fat: float | None = Field(default=None, ge=0)
+    water_percentage: float | None = Field(default=None, ge=0, le=100)
+    protein_percentage: float | None = Field(default=None, ge=0, le=100)
+
+
+class BodyMetricOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    date: date
+    weight: float | None = None
+    weight_unit: str | None = None
+    muscle_mass: float | None = None
+    body_fat_percentage: float | None = None
+    visceral_fat: float | None = None
+    water_percentage: float | None = None
+    protein_percentage: float | None = None
+
+# --------- Challenges ----------   
+class ChallengeCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    type: Literal["volume", "exercise", "consistency"]
+    exercise_name: str | None = None  # required when type == "exercise"
+    start_date: date
+    end_date: date
+    participant_user_ids: list[int] = Field(min_length=2)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "ChallengeCreate":
+        if self.type == "exercise" and not (self.exercise_name or "").strip():
+            raise ValueError("exercise_name is required for exercise-type challenges")
+        if self.end_date < self.start_date:
+            raise ValueError("end_date must be on or after start_date")
+        if len(set(self.participant_user_ids)) != len(self.participant_user_ids):
+            raise ValueError("Duplicate participants aren't allowed")
+        return self
+
+
+class ChallengeOut(BaseModel):
+    id: int
+    name: str
+    type: str
+    exercise_name: str | None = None
+    start_date: date
+    end_date: date
+    created_by: int
+    participants: list[UserOut]
+    status: Literal["upcoming", "active", "completed"]
+
+
+class LeaderboardEntry(BaseModel):
+    user: UserOut
+    score: float
+    unit: str
+    rank: int
+    is_leader: bool
+
+
+class LeaderboardOut(BaseModel):
+    challenge: ChallengeOut
+    entries: list[LeaderboardEntry]
+
+# --------- Nutrition ----------
+class NutritionEntryCreate(BaseModel):
+    description: str = Field(min_length=1, max_length=500)
+    timestamp: datetime | None = None  # defaults to now if not given
+
+class NutritionEntryUpdate(BaseModel):
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    timestamp: datetime | None = None
+    calories: float | None = Field(default=None, ge=0)
+    protein_g: float | None = Field(default=None, ge=0)
+    carbs_g: float | None = Field(default=None, ge=0)
+    saturated_fat_g: float | None = Field(default=None, ge=0)
+    unsaturated_fat_g: float | None = Field(default=None, ge=0)
+
+class NutritionEntryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    description: str
+    timestamp: datetime
+    calories: float
+    protein_g: float
+    carbs_g: float
+    saturated_fat_g: float
+    unsaturated_fat_g: float
+
+class NutritionSummaryOut(BaseModel):
+    date: date
+    calories: float
+    protein_g: float
+    carbs_g: float
+    saturated_fat_g: float
+    unsaturated_fat_g: float
+    entry_count: int

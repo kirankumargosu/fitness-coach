@@ -89,3 +89,73 @@ export interface PersonalBest {
   leader_value: number
   leader_units: "kg" | "reps" | "min" | "km";
 }
+
+export interface BodyMetric {
+  id: number;
+  date: string; // "YYYY-MM-DD"
+  weight: number | null;
+  weight_unit: "kg" | "lb" | null;
+  muscle_mass: number | null;
+  body_fat_percentage: number | null;
+  visceral_fat: number | null;
+  water_percentage: number | null;
+  protein_percentage: number | null;
+}
+
+export interface Badge {
+  key: string;
+  name: string;
+  description: string;
+  emoji: string;
+  earned: boolean;
+  detail: string;
+}
+
+export type ChallengeType = "volume" | "exercise" | "consistency";
+export type ChallengeStatus = "upcoming" | "active" | "completed";
+
+export interface Challenge {
+  id: number;
+  name: string;
+  type: ChallengeType;
+  exercise_name: string | null;
+  start_date: string; // "YYYY-MM-DD"
+  end_date: string;
+  created_by: number;
+  participants: User[];
+  status: ChallengeStatus;
+}
+
+export interface LeaderboardEntry {
+  user: User;
+  score: number;
+  unit: string;
+  rank: number;
+  is_leader: boolean;
+}
+
+export interface Leaderboard {
+  challenge: Challenge;
+  entries: LeaderboardEntry[];
+}
+
+export interface NutritionEntry {
+  id: number;
+  description: string;
+  timestamp: string; // ISO datetime
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  saturated_fat_g: number;
+  unsaturated_fat_g: number;
+}
+
+export interface NutritionSummary {
+  date: string; // "YYYY-MM-DD"
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  saturated_fat_g: number;
+  unsaturated_fat_g: number;
+  entry_count: number;
+}
