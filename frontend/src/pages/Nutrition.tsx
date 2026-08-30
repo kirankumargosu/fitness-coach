@@ -55,6 +55,10 @@ export function Nutrition() {
   const [logging, setLogging] = useState(false);
   const [logError, setLogError] = useState<string | null>(null);
 
+  const [asking, setAsking] = useState(false);
+  const [askAnswer, setAskAnswer] = useState<string | null>(null);
+  const [askError, setAskError] = useState<string | null>(null);
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -82,6 +86,7 @@ export function Nutrition() {
     if (!description.trim()) return;
     setLogging(true);
     setLogError(null);
+    setAskAnswer(null);
     try {
       await api.createNutritionEntry({ description: description.trim() });
       setDescription("");
@@ -92,6 +97,21 @@ export function Nutrition() {
       );
     } finally {
       setLogging(false);
+    }
+  };
+
+  const handleAsk = async () => {
+    if (!description.trim()) return;
+    setAsking(true);
+    setAskError(null);
+    setAskAnswer(null);
+    try {
+      const answer = await api.askNutrition(description.trim());
+      setAskAnswer(answer);
+    } catch (err) {
+      setAskError(apiErrorMessage(err, "Couldn't get a suggestion — try again."));
+    } finally {
+      setAsking(false);
     }
   };
 
@@ -144,19 +164,39 @@ export function Nutrition() {
 
       <form className="log-form nutrition-log-form" onSubmit={handleLog}>
         <label className="field">
-          <span>What did you eat?</span>
+          <span>What did you eat, or ask for a suggestion</span>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            placeholder="2 eggs, toast with butter, and a coffee with milk"
+            placeholder='"2 eggs and toast" or "suggest a low-calorie high-protein South Indian meal"'
             required
           />
         </label>
+        
         {logError && <p className="form-error">{logError}</p>}
-        <button type="submit" className="primary-btn" disabled={logging}>
-          {logging ? "Estimating…" : "Log it"}
-        </button>
+        {askError && <p className="form-error">{askError}</p>}
+        
+        <div className="nutrition-form-actions">
+          <button type="submit" className="primary-btn" disabled={logging || asking}>
+            {logging ? "Estimating…" : "Log it"}
+          </button>
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={handleAsk}
+            disabled={logging || asking}
+          >
+            {asking ? "Asking…" : "Ask AI"}
+          </button>
+        </div>
+
+        {askAnswer && (
+          <div className="nutrition-ask-answer">
+            <span className="nutrition-ask-label">Suggestion — not logged</span>
+            <p>{askAnswer}</p>
+          </div>
+        )}
       </form>
 
       {summary && summary.entry_count > 0 && (

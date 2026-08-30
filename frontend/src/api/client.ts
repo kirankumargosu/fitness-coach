@@ -155,8 +155,13 @@ export const api = {
 
   deleteChallenge: (id: number) => client.delete(`/challenges/${id}`),
 
+  askNutrition: (question: string) =>
+    client
+      .post<{ answer: string }>("/nutrition/ask", { question })
+      .then((r) => r.data.answer),
+      
   createNutritionEntry: (payload: { description: string; timestamp?: string }) =>
-  client.post<NutritionEntry>("/nutrition", payload).then((r) => r.data),
+    client.post<NutritionEntry>("/nutrition", payload).then((r) => r.data),
 
   listNutritionEntries: (params: { start?: string; end?: string } = {}) =>
     client
@@ -176,7 +181,7 @@ export const api = {
   deleteNutritionEntry: (id: number) => client.delete(`/nutrition/${id}`),
 
   createWaterEntry: (payload: { amount_ml: number; timestamp?: string }) =>
-  client.post<WaterEntry>("/water", payload).then((r) => r.data),
+    client.post<WaterEntry>("/water", payload).then((r) => r.data),
 
   listWaterEntries: (params: { start?: string; end?: string } = {}) =>
     client.get<WaterEntry[]>("/water", { params }).then((r) => r.data),

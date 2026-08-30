@@ -289,6 +289,12 @@ class NutritionSummaryOut(BaseModel):
     unsaturated_fat_g: float
     entry_count: int
 
+class NutritionAskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+
+class NutritionAskResponse(BaseModel):
+    answer: str
+
 # Water
 class WaterEntryCreate(BaseModel):
     amount_ml: float = Field(gt=0, le=5000)

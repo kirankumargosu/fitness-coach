@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app import auth, crud, models, schemas
 from app.database import get_db
-from app.nutrition_ai import NutritionAIError, estimate_nutrition
+from app.nutrition_ai import NutritionAIError, ask_nutrition_question, estimate_nutrition
 
 router = APIRouter(prefix="/api/nutrition", tags=["nutrition"])
 
@@ -20,6 +20,7 @@ def create_entry(
     current_user: models.User = Depends(auth.get_current_user),
 ):
     try:
+        type = val
         estimate = estimate_nutrition(payload.description)
     except NutritionAIError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
@@ -38,7 +39,19 @@ def list_entries(
     auth.check_owner_or_admin(current_user, target_id)
     return crud.list_nutrition_entries(db, target_id, start, end)
 
-
+@router.post("/ask", response_model=schemas.NutritionAskResponse)
+def ask(
+    payload: schemas.NutritionAskRequest,
+    _current_user: models.User = Depends(auth.get_current_user),
+):
+    # Deliberately no `db` dependency here — this endpoint has no way to
+    # write to the database even by accident. Suggestions never get logged.
+    try:
+        answer = ask_nutrition_question(payload.question)
+    except NutritionAIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return schemas.NutritionAskResponse(answer=answer)
+    
 @router.get("/summary", response_model=schemas.NutritionSummaryOut)
 def get_summary(
     date: date = Query(...),

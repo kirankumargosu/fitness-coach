@@ -1110,6 +1110,46 @@ select:focus {
   margin-bottom: 1.25rem;
 }
 
+.nutrition-form-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.nutrition-form-actions .primary-btn {
+  margin-top: 0;
+  flex: 1 1 auto;
+}
+
+.nutrition-form-actions .ghost-btn {
+  margin-top: 0;
+  flex: none;
+}
+
+.nutrition-ask-answer {
+  margin-top: 1rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--kiran);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+}
+
+.nutrition-ask-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--kiran);
+  margin-bottom: 0.4rem;
+}
+
+.nutrition-ask-answer p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--chalk);
+}
+
 .nutrition-summary {
   display: flex;
   justify-content: space-between;
