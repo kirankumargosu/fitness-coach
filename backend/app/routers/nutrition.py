@@ -20,7 +20,6 @@ def create_entry(
     current_user: models.User = Depends(auth.get_current_user),
 ):
     try:
-        type = val
         estimate = estimate_nutrition(payload.description)
     except NutritionAIError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
@@ -51,7 +50,7 @@ def ask(
     except NutritionAIError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     return schemas.NutritionAskResponse(answer=answer)
-    
+
 @router.get("/summary", response_model=schemas.NutritionSummaryOut)
 def get_summary(
     date: date = Query(...),
