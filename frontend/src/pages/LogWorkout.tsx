@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, apiErrorMessage } from "../api/client";
-import type { DraftSet, SetKind } from "../api/types";
+import type { DraftSetRow, ExerciseBlock, SetKind } from "../api/types";
 import { useAuth } from "../context/AuthContext";
 import { useUsers } from "../context/UserContext";
-import { WorkoutSubNav } from "../components/WorkoutSubNav";
 // import { userColor } from "../lib/userColor";
+import { WorkoutSubNav } from "../components/WorkoutSubNav";
 import { ExerciseCombobox } from "../components/ExerciseCombobox";
 
 function toLocalDatetimeInputValue(d: Date): string {
@@ -15,11 +15,8 @@ function toLocalDatetimeInputValue(d: Date): string {
   )}:${pad(d.getMinutes())}`;
 }
 
-function emptySet(setNumber: number, kind: SetKind = "strength"): DraftSet {
+function emptyRow(): DraftSetRow {
   return {
-    kind,
-    exercise_name: "",
-    set_number: setNumber,
     reps: 8,
     weight: 0,
     weight_unit: "kg",
@@ -27,6 +24,10 @@ function emptySet(setNumber: number, kind: SetKind = "strength"): DraftSet {
     distance: 0,
     distance_unit: "km",
   };
+}
+
+function emptyBlock(kind: SetKind = "strength"): ExerciseBlock {
+  return { exercise_name: "", kind, rows: [emptyRow()] };
 }
 
 export function LogWorkout() {
@@ -43,36 +44,73 @@ export function LogWorkout() {
   const [date, setDate] = useState(toLocalDatetimeInputValue(new Date()));
   // const [duration, setDuration] = useState<string>("");
   // const [notes, setNotes] = useState("");
-  const [sets, setSets] = useState<DraftSet[]>([emptySet(1)]);
+  // Sets are grouped by exercise: pick the exercise once, add as many
+  // sets under it as you did, then move to the next exercise. No more
+  // reselecting the same exercise for every single set.
+  const [blocks, setBlocks] = useState<ExerciseBlock[]>([emptyBlock()]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateSet = (index: number, patch: Partial<DraftSet>) => {
-    setSets((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, ...patch } : s))
+  const updateBlock = (blockIndex: number, patch: Partial<ExerciseBlock>) => {
+    setBlocks((prev) =>
+      prev.map((b, i) => (i === blockIndex ? { ...b, ...patch } : b))
     );
   };
 
-  const addSetRow = () => {
-    const lastKind = sets[sets.length - 1]?.kind ?? "strength";
-    setSets((prev) => [
-      {
-        ...emptySet(1, lastKind),
-        exercise_name: "",
-        reps: 0,
-        weight: 0,
-        duration_minutes: 0,
-        distance: 0,
-      },
-      ...prev,
-    ].map((s, i, rows) => ({ ...s, set_number: rows.length - i })));
+  const updateRow = (
+    blockIndex: number,
+    rowIndex: number,
+    patch: Partial<DraftSetRow>
+  ) => {
+    setBlocks((prev) =>
+      prev.map((b, i) =>
+        i === blockIndex
+          ? {
+            ...b,
+            rows: b.rows.map((r, ri) =>
+              ri === rowIndex ? { ...r, ...patch } : r
+            ),
+          }
+          : b
+      )
+    );
   };
 
-  const removeSetRow = (index: number) => {
-    setSets((prev) =>
-      prev
-        .filter((_, i) => i !== index)
-        .map((s, i, rows) => ({ ...s, set_number: rows.length - i }))
+  const addExerciseBlock = () => {
+    const last = blocks[blocks.length - 1];
+    setBlocks((prev) => [emptyBlock(last?.kind ?? "strength"), ...prev]);
+  };
+
+  const removeExerciseBlock = (blockIndex: number) => {
+    setBlocks((prev) => prev.filter((_, i) => i !== blockIndex));
+  };
+
+  // const addSetRow = (blockIndex: number) => {
+  //   setBlocks((prev) =>
+  //     prev.map((b, i) => {
+  //       if (i !== blockIndex) return b;
+  //       const last = b.rows[b.rows.length - 1];
+  //       return { ...b, rows: [...b.rows, last ? { ...last } : emptyRow()] };
+  //     })
+  //   );
+  // };
+
+  const addSetRow = (blockIndex: number) => {
+    setBlocks((prev) =>
+      prev.map((b, i) => {
+        if (i !== blockIndex) return b;
+        return { ...b, rows: [emptyRow(), ...b.rows] };
+      })
+    );
+  };
+
+  const removeSetRow = (blockIndex: number, rowIndex: number) => {
+    setBlocks((prev) =>
+      prev.map((b, i) =>
+        i === blockIndex
+          ? { ...b, rows: b.rows.filter((_, ri) => ri !== rowIndex) }
+          : b
+      )
     );
   };
 
@@ -80,8 +118,8 @@ export function LogWorkout() {
     e.preventDefault();
     if (!logTarget) return;
 
-    const validSets = sets.filter((s) => s.exercise_name.trim().length > 0);
-    if (validSets.length === 0) {
+    const validBlocks = blocks.filter((b) => b.exercise_name.trim().length > 0);
+    if (validBlocks.length === 0) {
       setError("Log at least one set with an exercise name.");
       return;
     }
@@ -95,27 +133,31 @@ export function LogWorkout() {
         date: new Date(date).toISOString(),
         // duration_minutes: duration ? Number(duration) : undefined,
         // notes: notes.trim() || undefined,
-        sets: validSets.map((s) =>
-          s.kind === "strength"
-            ? {
-              exercise_name: s.exercise_name,
-              set_number: s.set_number,
-              reps: s.reps,
-              weight: s.weight,
-              weight_unit: s.weight_unit,
-            }
-            : {
-              exercise_name: s.exercise_name,
-              set_number: s.set_number,
-              duration_seconds: Math.round(s.duration_minutes * 60),
-              distance: s.distance || undefined,
-              distance_unit: s.distance_unit,
-            }
+        sets: validBlocks.flatMap((b) =>
+          b.rows.map((r, i) =>
+            b.kind === "strength"
+              ? {
+                exercise_name: b.exercise_name,
+                set_number: i + 1,
+                reps: r.reps,
+                weight: r.weight,
+                weight_unit: r.weight_unit,
+              }
+              : {
+                exercise_name: b.exercise_name,
+                set_number: i + 1,
+                duration_seconds: Math.round(r.duration_minutes * 60),
+                distance: r.distance || undefined,
+                distance_unit: r.distance_unit,
+              }
+          )
         ),
       });
       navigate(`/history?session=${session.id}`);
     } catch (err) {
-      setError(apiErrorMessage(err, "Couldn't save that session — check the fields and try again."));
+      setError(
+        apiErrorMessage(err, "Couldn't save that session — check the fields and try again.")
+      );
     } finally {
       setSubmitting(false);
     }
@@ -126,13 +168,11 @@ export function LogWorkout() {
   }
 
   return (
-     <>
+    <>
       <WorkoutSubNav />
       <form className="log-form" onSubmit={handleSubmit}>
         <div className="log-form-header">
-          <div className="log-form-title">
-            <h2>Log a session</h2>
-          </div>
+          <h2>Log a session</h2>
           {isAdmin ? (
             <label className="field admin-target-picker">
               <span>Logging for</span>
@@ -150,9 +190,9 @@ export function LogWorkout() {
                 ))}
               </select>
             </label>
-          )
-            : ""
-            //  (
+          ) :
+            ""
+            // (
             //   <span className="pill" style={{ borderColor: userColor(logTarget) }}>
             //     Logging for <strong>{logTarget.name}</strong>
             //   </span>
@@ -169,7 +209,7 @@ export function LogWorkout() {
               placeholder="Push day, Leg day, Morning run…"
             />
           </label> */}
-          <label className="field date-field">
+          <label className="field">
             <span>Date &amp; time</span>
             <input
               type="datetime-local"
@@ -178,7 +218,6 @@ export function LogWorkout() {
               required
             />
           </label>
-
 
           {/* <label className="field">
             <span>Duration (min)</span>
@@ -190,40 +229,38 @@ export function LogWorkout() {
               placeholder="60"
             />
           </label> */}
-          
         </div>
 
-        <div className="set-row-toggle-wrap"> 
+        {/* <label className="field">
+          <span>Notes</span>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            placeholder="How it felt, what to adjust next time…"
+          />
+        </label> */}
+        <div className="set-row-toggle-wrap">
           <button type="submit" className="secondary-btn" disabled={submitting}>
             {submitting ? "Saving…" : "Save session"}
           </button>
         </div>
-        <h3 className="section-label">Sets</h3>
-        <button type="button" className="ghost-btn" onClick={addSetRow}>
-          + Add set
+
+        <h3 className="section-label">Exercises</h3>
+
+        <button type="button" className="ghost-btn" onClick={addExerciseBlock}>
+          + Add exercise
         </button>
 
-        <div className="set-rows">
-          {sets.map((s, i) => (
-            <div className={`set-row set-row-${s.kind}`} key={i}>
-              <div className="set-row-top">
-                <span className="set-index">{s.set_number}</span>
-                {/* <input
-                  className="set-exercise"
-                  placeholder={
-                    s.kind === "strength"
-                      ? "Exercise, e.g. Bench Press"
-                      : "Activity, e.g. Jogging"
-                  }
-                  value={s.exercise_name}
-                  onChange={(e) => updateSet(i, { exercise_name: e.target.value })}
-                  list="exercise-suggestions"
-                /> */}
+        <div className="exercise-blocks">
+          {blocks.map((block, bi) => (
+            <div className={`exercise-block-card exercise-block-${block.kind}`} key={bi}>
+              <div className="exercise-block-top">
                 <ExerciseCombobox
-                  value={s.exercise_name}
-                  onChange={(name) => updateSet(i, { exercise_name: name })}
+                  value={block.exercise_name}
+                  onChange={(name) => updateBlock(bi, { exercise_name: name })}
                   placeholder={
-                    s.kind === "strength"
+                    block.kind === "strength"
                       ? "Exercise, e.g. Bench Press"
                       : "Activity, e.g. Jogging"
                   }
@@ -231,130 +268,172 @@ export function LogWorkout() {
                 <button
                   type="button"
                   className="icon-btn danger"
-                  onClick={() => removeSetRow(i)}
-                  aria-label="Remove set"
-                  disabled={sets.length === 1}
+                  onClick={() => removeExerciseBlock(bi)}
+                  aria-label="Remove exercise"
+                  disabled={blocks.length === 1}
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="set-row-toggle-wrap">
+              <div className="exercise-block-toggle-wrap">
                 <div className="set-kind-toggle" role="group" aria-label="Set type">
                   <button
                     type="button"
-                    className={s.kind === "strength" ? "active" : ""}
-                    onClick={() => updateSet(i, { kind: "strength" })}
+                    className={block.kind === "strength" ? "active" : ""}
+                    onClick={() => updateBlock(bi, { kind: "strength" })}
                   >
                     Reps
                   </button>
                   <button
                     type="button"
-                    className={s.kind === "cardio" ? "active" : ""}
-                    onClick={() => updateSet(i, { kind: "cardio" })}
+                    className={block.kind === "cardio" ? "active" : ""}
+                    onClick={() => updateBlock(bi, { kind: "cardio" })}
                   >
                     Time
                   </button>
                 </div>
               </div>
 
-              {s.kind === "strength" ? (
-                <div className="set-row-fields">
-                  <label className="set-field">
-                    <span className="set-field-label">Weight</span>
-                    <div className="input-with-unit">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.05"
-                        value={s.weight}
-                        onChange={(e) =>
-                          updateSet(i, { weight: Number(e.target.value) })
-                        }
-                        aria-label="Weight"
-                      />
-                      <select
-                        value={s.weight_unit}
-                        onChange={(e) =>
-                          updateSet(i, {
-                            weight_unit: e.target.value as "kg" | "lb",
-                          })
-                        }
-                        aria-label="Weight unit"
-                      >
-                        <option value="kg">kg</option>
-                        <option value="lb">lb</option>
-                      </select>
-                    </div>
-                  </label>
-                  <label className="set-field">
-                    <span className="set-field-label">Reps</span>
-                    <input
-                      className="set-num"
-                      type="number"
-                      min={0}
-                      value={s.reps}
-                      onChange={(e) =>
-                        updateSet(i, { reps: Number(e.target.value) })
-                      }
-                      aria-label="Reps"
-                    />
-                  </label>
-                </div>
-              ) : (
-                <div className="set-row-fields">
-                  <label className="set-field">
-                    <span className="set-field-label">Duration</span>
-                    <div className="input-with-unit">
-                      <input
-                        type="number"
-                        min={0}
-                        value={s.duration_minutes}
-                        onChange={(e) =>
-                          updateSet(i, {
-                            duration_minutes: Number(e.target.value),
-                          })
-                        }
-                        aria-label="Duration in minutes"
-                      />
-                      <span className="input-unit-fixed">min</span>
-                    </div>
-                  </label>
-                  <label className="set-field">
-                    <span className="set-field-label">Distance</span>
-                    <div className="input-with-unit">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={s.distance}
-                        onChange={(e) =>
-                          updateSet(i, { distance: Number(e.target.value) })
-                        }
-                        aria-label="Distance"
-                      />
-                      <select
-                        value={s.distance_unit}
-                        onChange={(e) =>
-                          updateSet(i, {
-                            distance_unit: e.target.value as "km" | "mi",
-                          })
-                        }
-                        aria-label="Distance unit"
-                      >
-                        <option value="km">km</option>
-                        <option value="mi">mi</option>
-                      </select>
-                    </div>
-                  </label>
-                </div>
-              )}
+              <button
+                type="button"
+                className="ghost-btn exercise-block-add-set"
+                onClick={() => addSetRow(bi)}
+              >
+                + Add set
+              </button>
+
+              <div className="exercise-block-rows">
+                {block.rows.map((row, ri) => (
+                  <div className="set-row-fields exercise-block-row" key={ri}>
+                    <span className="set-index">{block.rows.length - ri}</span>
+                    {block.kind === "strength" ? (
+                      <>
+                        <label className="set-field">
+                          <span className="set-field-label">Weight</span>
+                          <div className="input-with-unit">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={row.weight}
+                              onChange={(e) =>
+                                updateRow(bi, ri, { weight: Number(e.target.value) })
+                              }
+                              aria-label="Weight"
+                            />
+                            <select
+                              value={row.weight_unit}
+                              onChange={(e) =>
+                                updateRow(bi, ri, {
+                                  weight_unit: e.target.value as "kg" | "lb",
+                                })
+                              }
+                              aria-label="Weight unit"
+                            >
+                              <option value="kg">kg</option>
+                              <option value="lb">lb</option>
+                            </select>
+                          </div>
+                        </label>
+
+                        <label className="set-field">
+                          <span className="set-field-label">Reps</span>
+                          <input
+                            className="set-num"
+                            type="number"
+                            min={0}
+                            value={row.reps}
+                            onChange={(e) =>
+                              updateRow(bi, ri, { reps: Number(e.target.value) })
+                            }
+                            aria-label="Reps"
+                          />
+                        </label>
+                      </>
+                    ) : (
+                      <>
+                        <label className="set-field">
+                          <span className="set-field-label">Duration</span>
+                          <div className="input-with-unit">
+                            <input
+                              type="number"
+                              min={0}
+                              value={row.duration_minutes}
+                              onChange={(e) =>
+                                updateRow(bi, ri, {
+                                  duration_minutes: Number(e.target.value),
+                                })
+                              }
+                              aria-label="Duration in minutes"
+                            />
+                            <span className="input-unit-fixed">min</span>
+                          </div>
+                        </label>
+                        <label className="set-field">
+                          <span className="set-field-label">Distance</span>
+                          <div className="input-with-unit">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.1"
+                              value={row.distance}
+                              onChange={(e) =>
+                                updateRow(bi, ri, {
+                                  distance: Number(e.target.value),
+                                })
+                              }
+                              aria-label="Distance"
+                            />
+                            <select
+                              value={row.distance_unit}
+                              onChange={(e) =>
+                                updateRow(bi, ri, {
+                                  distance_unit: e.target.value as "km" | "mi",
+                                })
+                              }
+                              aria-label="Distance unit"
+                            >
+                              <option value="km">km</option>
+                              <option value="mi">mi</option>
+                            </select>
+                          </div>
+                        </label>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      className="icon-btn danger"
+                      onClick={() => removeSetRow(bi, ri)}
+                      aria-label="Remove this set"
+                      disabled={block.rows.length === 1}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* <button
+                type="button"
+                className="ghost-btn exercise-block-add-set"
+                onClick={() => addSetRow(bi)}
+              >
+                + Add set
+              </button> */}
             </div>
           ))}
         </div>
 
+        {/* <button type="button" className="ghost-btn" onClick={addExerciseBlock}>
+          + Add exercise
+        </button> */}
+
         {error && <p className="form-error">{error}</p>}
 
+        {/* <button type="submit" className="primary-btn" disabled={submitting}>
+          {submitting ? "Saving…" : "Save session"}
+        </button> */}
       </form>
     </>
   );

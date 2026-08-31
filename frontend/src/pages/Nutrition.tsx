@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { api, apiErrorMessage } from "../api/client";
 import type { NutritionEntry, NutritionSummary } from "../api/types";
 import { useAuth } from "../context/AuthContext";
@@ -173,10 +175,10 @@ export function Nutrition() {
             required
           />
         </label>
-        
+
         {logError && <p className="form-error">{logError}</p>}
         {askError && <p className="form-error">{askError}</p>}
-        
+
         <div className="nutrition-form-actions">
           <button type="submit" className="primary-btn" disabled={logging || asking}>
             {logging ? "Estimating…" : "Log it"}
@@ -194,7 +196,7 @@ export function Nutrition() {
         {askAnswer && (
           <div className="nutrition-ask-answer">
             <span className="nutrition-ask-label">Suggestion — not logged</span>
-            <p>{askAnswer}</p>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{askAnswer}</ReactMarkdown>
           </div>
         )}
       </form>

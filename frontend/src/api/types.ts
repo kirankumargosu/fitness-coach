@@ -63,10 +63,9 @@ export interface WorkoutSessionSummary {
 
 export type SetKind = "strength" | "cardio";
 
-export interface DraftSet {
-  kind: SetKind;
-  exercise_name: string;
-  set_number: number;
+/** One set's numbers — no exercise_name here anymore; that lives on the
+ * ExerciseBlock that contains it (see LogWorkout.tsx). */
+export interface DraftSetRow {
   // Strength
   reps: number;
   weight: number;
@@ -75,6 +74,13 @@ export interface DraftSet {
   duration_minutes: number;
   distance: number;
   distance_unit: "km" | "mi";
+}
+
+/** One exercise, picked once, with however many sets logged under it. */
+export interface ExerciseBlock {
+  exercise_name: string;
+  kind: SetKind;
+  rows: DraftSetRow[];
 }
 
 export interface PersonalBest {

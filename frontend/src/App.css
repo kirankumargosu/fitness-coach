@@ -1150,6 +1150,35 @@ select:focus {
   color: var(--chalk);
 }
 
+.nutrition-ask-answer table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8rem 0;
+  font-size: 0.85rem;
+}
+
+.nutrition-ask-answer th {
+  background: var(--surface);
+  color: var(--chalk-dim);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 2px solid var(--kiran);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nutrition-ask-answer td {
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--chalk);
+}
+
+.nutrition-ask-answer tr:hover {
+  background: var(--surface);
+}
+
 .nutrition-summary {
   display: flex;
   justify-content: space-between;
@@ -1430,4 +1459,70 @@ select:focus {
 .water-log-row .session-meta {
   flex: 1 1 auto;
   text-align: right;
+}
+
+.exercise-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.exercise-block-card {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 0.7rem 0.7rem 0.8rem;
+  background: var(--surface);
+}
+
+/* Line 1: exercise picker + remove-exercise button */
+.exercise-block-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.exercise-block-top > .icon-btn {
+  flex: none;
+}
+
+/* Line 2: strength/cardio toggle, centered in its own row */
+.exercise-block-toggle-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.exercise-block-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+/* A single set's numbers, within its exercise block: number badge +
+   the shared .set-row-fields/.set-field layout + a remove button. */
+.exercise-block-row {
+  align-items: flex-end;
+}
+
+.exercise-block-row .set-index {
+  flex: none;
+  width: 1.4rem;
+  align-self: center;
+  font-family: var(--font-display);
+  color: var(--plate-yellow);
+  text-align: center;
+}
+
+.exercise-block-row > .icon-btn {
+  flex: none;
+  align-self: flex-end;
+}
+
+.exercise-block-add-set {
+  width: 100%;
+  margin-top: 0;
+  padding: 0.5rem;
+  font-size: 0.75rem;
 }
