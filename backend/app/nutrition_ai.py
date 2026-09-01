@@ -41,11 +41,30 @@ Always give your best numeric estimate, even for vague descriptions — never \
 omit a field or return null. Use 0 only when a macro is genuinely absent \
 (e.g. black coffee has 0 fat)."""
 
-# SYSTEM_ASK_PROMPT = """You are a friendly, knowledgeable nutrition assistant. \
-# Answer the user's question directly and practically — suggest specific foods, \
-# dishes, or approaches where relevant. Keep your answer concise (a few \
-# sentences to a short paragraph), conversational, and actionable. Respond in \
-# plain text, not JSON."""
+SYSTEM_ESTIMATE_PROMPT = """You are a nutrition estimation assistant. Given a free-text \
+description of food someone ate, identify all distinct dishes/items mentioned \
+(e.g., "chapathi with chicken curry" contains two dishes: "chapathi" and "chicken curry"). \
+For each dish, estimate its nutritional content using typical serving sizes and \
+standard nutrition data.
+
+Respond with ONLY a JSON object in exactly this shape, with no other text:
+{
+  "dishes": [
+    {
+      "food": "<name of the dish if multiple dishes, otherwise same as input>",
+      "calories": <number, kcal>,
+      "protein_g": <number, grams>,
+      "carbs_g": <number, grams>,
+      "saturated_fat_g": <number, grams>,
+      "unsaturated_fat_g": <number, grams>
+    }
+  ]
+}
+
+Always give your best numeric estimate, \
+even for vague descriptions — never omit a field or return null. \
+Use 0 only when a macro is genuinely absent."""
+
 
 SYSTEM_ASK_PROMPT = """You are a friendly, knowledgeable nutrition assistant. \
 Answer the user's question directly and practically using their logged daily intake context \
@@ -98,20 +117,62 @@ def ask_nutrition_question(question: str, context: str | None = None) -> str:
     except (KeyError, IndexError) as exc:
         raise NutritionAIError("The AI didn't return an answer.") from exc
 
-def estimate_nutrition(description: str) -> dict:
+# def estimate_nutrition(description: str) -> dict:
+#     if not GROQ_API_KEY:
+#         raise NutritionAIError("GROQ_API_KEY is not configured on the server.")
+
+#     try:
+#         response = httpx.post(
+#             GROQ_URL,
+#             headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+#             json={
+#                 "model": GROQ_MODEL,
+#                 "messages": [
+#                     {"role": "system", "content": SYSTEM_ESTIMATE_PROMPT},
+#                     {"role": "user", "content": description},
+#                 ],
+#                 "temperature": 0.2,
+#                 "response_format": {"type": "json_object"},
+#             },
+#             timeout=20.0,
+#         )
+#         response.raise_for_status()
+#     except httpx.HTTPError as exc:
+#         raise NutritionAIError(f"Couldn't reach the nutrition AI: {exc}") from exc
+
+#     try:
+#         content = response.json()["choices"][0]["message"]["content"]
+#         parsed = json.loads(content)
+#     except (KeyError, IndexError, ValueError) as exc:
+#         raise NutritionAIError("The AI didn't return a valid estimate.") from exc
+
+#     missing = [f for f in REQUIRED_FIELDS if f not in parsed]
+#     if missing:
+#         raise NutritionAIError(f"AI response missing fields: {', '.join(missing)}")
+
+#     return parsed
+
+def estimate_nutrition(description: str, context: str | None = None) -> list[dict]:
     if not GROQ_API_KEY:
         raise NutritionAIError("GROQ_API_KEY is not configured on the server.")
 
+    messages = [{"role": "system", "content": SYSTEM_ESTIMATE_PROMPT}]
+
+    # Include the user's daily log context if present
+    if context:
+        messages.append({
+            "role": "system",
+            "content": f"User's logged intake for today:\n{context}"
+        })
+
+    messages.append({"role": "user", "content": description})
     try:
         response = httpx.post(
             GROQ_URL,
             headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
             json={
                 "model": GROQ_MODEL,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_ESTIMATE_PROMPT},
-                    {"role": "user", "content": description},
-                ],
+                "messages": messages,
                 "temperature": 0.2,
                 "response_format": {"type": "json_object"},
             },
@@ -124,11 +185,17 @@ def estimate_nutrition(description: str) -> dict:
     try:
         content = response.json()["choices"][0]["message"]["content"]
         parsed = json.loads(content)
+        dishes = parsed.get("dishes", [])
     except (KeyError, IndexError, ValueError) as exc:
         raise NutritionAIError("The AI didn't return a valid estimate.") from exc
 
-    missing = [f for f in REQUIRED_FIELDS if f not in parsed]
-    if missing:
-        raise NutritionAIError(f"AI response missing fields: {', '.join(missing)}")
+    if not isinstance(dishes, list) or not dishes:
+        raise NutritionAIError("AI response missing 'dishes' list.")
 
-    return parsed
+    # Validate each item in the list
+    for dish in dishes:
+        missing = [f for f in REQUIRED_FIELDS if f not in dish]
+        if missing:
+            raise NutritionAIError(f"AI response missing fields in dish: {', '.join(missing)}")
+
+    return dishes

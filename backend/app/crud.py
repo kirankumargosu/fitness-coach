@@ -391,6 +391,34 @@ def delete_challenge(db: Session, challenge: models.Challenge) -> None:
     db.commit()
 
 # --------- Nutrition ----------
+
+# app/crud.py
+
+def create_nutrition_entries(
+    db: Session,
+    user_id: int,
+    payload: schemas.NutritionEntryCreate,
+    estimates: list[dict],
+) -> list[models.NutritionEntry]:
+    entries = []
+    for item in estimates:
+        entry = models.NutritionEntry(
+            user_id=user_id,
+            description=item.get("food") or payload.description,
+            timestamp=getattr(payload, "timestamp", None) or datetime.utcnow(), # Fallback added here            calories=item.get("calories", 0),
+            protein_g=item.get("protein_g", 0),
+            carbs_g=item.get("carbs_g", 0),
+            saturated_fat_g=item.get("saturated_fat_g", 0),
+            unsaturated_fat_g=item.get("unsaturated_fat_g", 0),
+        )
+        db.add(entry)
+        entries.append(entry)
+    
+    db.commit()
+    for entry in entries:
+        db.refresh(entry)
+    return entries
+    
 def create_nutrition_entry(
     db: Session,
     user_id: int,
