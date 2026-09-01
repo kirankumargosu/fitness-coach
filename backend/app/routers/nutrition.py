@@ -41,12 +41,36 @@ def list_entries(
 @router.post("/ask", response_model=schemas.NutritionAskResponse)
 def ask(
     payload: schemas.NutritionAskRequest,
-    _current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
 ):
+    today = date.today()
+    
+    # 1. Fetch today's summary and logged entries for context
+    summary = crud.nutrition_summary(db, current_user.id, today)
+    entries = crud.list_nutrition_entries(
+        db,
+        user_id=current_user.id,
+        start=datetime.combine(today, datetime.min.time()),
+        end=datetime.combine(today, datetime.max.time()),
+    )
+
+    # 2. Format context for the prompt
+    logged_foods = ", ".join([entry.description for entry in entries]) if entries else "None"
+
+    context = (
+        f"Date: {today}\n"
+        f"Logged Foods: {logged_foods}\n"
+        f"Totals -> Calories: {summary.get('calories', 0)} kcal, "
+        f"Protein: {summary.get('protein_g', 0)}g, "
+        f"Carbs: {summary.get('carbs_g', 0)}g, "
+        f"Saturated Fat: {summary.get('saturated_fat_g', 0)}g, "
+        f"Unsaturated Fat: {summary.get('unsaturated_fat_g', 0)}g"
+    )
     # Deliberately no `db` dependency here — this endpoint has no way to
     # write to the database even by accident. Suggestions never get logged.
     try:
-        answer = ask_nutrition_question(payload.question)
+        answer = ask_nutrition_question(payload.question, context=context)
     except NutritionAIError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     return schemas.NutritionAskResponse(answer=answer)
