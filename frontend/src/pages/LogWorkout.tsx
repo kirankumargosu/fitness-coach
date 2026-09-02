@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, apiErrorMessage } from "../api/client";
 import type { DraftSetRow, ExerciseBlock, SetKind } from "../api/types";
@@ -30,6 +30,50 @@ function emptyBlock(kind: SetKind = "strength"): ExerciseBlock {
   return { exercise_name: "", kind, rows: [emptyRow()] };
 }
 
+// Unsaved session state survives navigating away and back (and even a
+// page reload) by mirroring it into localStorage as it changes, keyed
+// per logging-target user so an admin switching who they're logging for
+// doesn't see someone else's in-progress draft.
+function draftKey(userId: number): string {
+  return `iron-log-draft-session-${userId}`;
+}
+
+interface DraftState {
+  date: string;
+  blocks: ExerciseBlock[];
+}
+
+function loadDraft(userId: number): DraftState | null {
+  try {
+    const raw = localStorage.getItem(draftKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.blocks) || typeof parsed.date !== "string") {
+      return null;
+    }
+    return parsed as DraftState;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(userId: number, date: string, blocks: ExerciseBlock[]): void {
+  try {
+    localStorage.setItem(draftKey(userId), JSON.stringify({ date, blocks }));
+  } catch {
+    // Storage full or unavailable — drafts are a convenience, not
+    // critical, so just skip silently rather than breaking logging.
+  }
+}
+
+function clearDraft(userId: number): void {
+  try {
+    localStorage.removeItem(draftKey(userId));
+  } catch {
+    // ignore
+  }
+}
+
 export function LogWorkout() {
   const { currentUser } = useAuth();
   const { activeUser, users, setActiveUser } = useUsers();
@@ -50,6 +94,34 @@ export function LogWorkout() {
   const [blocks, setBlocks] = useState<ExerciseBlock[]>([emptyBlock()]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hydratedForUserId = useRef<number | null>(null);
+
+  // Restore a saved draft (or reset to blank) whenever we land on this
+  // page for a given logging target — runs before paint so there's no
+  // flash of the empty form. useLayoutEffect rather than useEffect
+  // specifically to avoid that flicker.
+  useLayoutEffect(() => {
+    if (!logTarget) return;
+    if (hydratedForUserId.current === logTarget.id) return;
+    const draft = loadDraft(logTarget.id);
+    if (draft) {
+      setDate(draft.date);
+      setBlocks(draft.blocks);
+    } else {
+      setDate(toLocalDatetimeInputValue(new Date()));
+      setBlocks([emptyBlock()]);
+    }
+    hydratedForUserId.current = logTarget.id;
+  }, [logTarget?.id]);
+
+  // Mirror every change into localStorage — but only once hydration above
+  // has run for this user, so we don't clobber a real draft with the
+  // transient default state that exists for one render before hydrating.
+  useEffect(() => {
+    if (!logTarget) return;
+    if (hydratedForUserId.current !== logTarget.id) return;
+    saveDraft(logTarget.id, date, blocks);
+  }, [logTarget?.id, date, blocks]);
 
   const updateBlock = (blockIndex: number, patch: Partial<ExerciseBlock>) => {
     setBlocks((prev) =>
@@ -153,6 +225,7 @@ export function LogWorkout() {
           )
         ),
       });
+      clearDraft(logTarget.id);
       navigate(`/history?session=${session.id}`);
     } catch (err) {
       setError(
