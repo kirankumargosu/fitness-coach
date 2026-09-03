@@ -139,6 +139,44 @@ def update_session(
     db.refresh(session)
     return session
 
+def replace_session_sets(
+    db: Session,
+    session: models.WorkoutSession,
+    payload: schemas.WorkoutSessionFullUpdate,
+) -> models.WorkoutSession:
+    """Used when editing an existing session from the Log Workout form.
+    Updates metadata, then wipes and replaces the entire set list — the
+    cascade on WorkoutSession.sets handles deleting the old SetEntry rows.
+    """
+    session.title = payload.title
+    session.date = payload.date
+    session.duration_minutes = payload.duration_minutes
+    session.notes = payload.notes
+    session.sets.clear()
+    db.flush()
+
+    for set_payload in payload.sets:
+        exercise = get_or_create_exercise(
+            db, set_payload.exercise_id, set_payload.exercise_name
+        )
+        db.add(
+            models.SetEntry(
+                session_id=session.id,
+                exercise_id=exercise.id,
+                set_number=set_payload.set_number,
+                reps=set_payload.reps,
+                weight=set_payload.weight,
+                weight_unit=set_payload.weight_unit,
+                duration_seconds=set_payload.duration_seconds,
+                distance=set_payload.distance,
+                distance_unit=set_payload.distance_unit,
+                notes=set_payload.notes,
+            )
+        )
+
+    db.commit()
+    db.refresh(session)
+    return session
 
 def delete_session(db: Session, session: models.WorkoutSession) -> None:
     db.delete(session)

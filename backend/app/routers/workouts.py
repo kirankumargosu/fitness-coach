@@ -85,6 +85,24 @@ def update_session(
     auth.check_owner_or_admin(current_user, session.user_id)
     return crud.update_session(db, session, payload)
 
+@router.put("/{session_id}", response_model=schemas.WorkoutSessionOut)
+def replace_session(
+    session_id: int,
+    payload: schemas.WorkoutSessionFullUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """Full edit — replaces the session's metadata and entire set list.
+    Used by the Log Workout page's edit mode (loads a session, lets you
+    change anything, resubmits the whole thing)."""
+    session = crud.get_session(db, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    auth.check_owner_or_admin(current_user, session.user_id)
+    try:
+        return crud.replace_session_sets(db, session, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 @router.delete("/{session_id}", status_code=204)
 def delete_session(

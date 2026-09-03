@@ -106,6 +106,17 @@ export const api = {
     sets: SetPayload[];
   }) => client.post<WorkoutSession>("/sessions", payload).then((r) => r.data),
 
+  updateSessionFull: (
+    id: number,
+    payload: {
+      title?: string;
+      date: string;
+      duration_minutes?: number;
+      notes?: string;
+      sets: SetPayload[];
+    }
+  ) => client.put<WorkoutSession>(`/sessions/${id}`, payload).then((r) => r.data),
+
   deleteSession: (id: number) => client.delete(`/sessions/${id}`),
 
   addSet: (sessionId: number, payload: SetPayload) =>

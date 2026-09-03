@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { WorkoutSession, WorkoutSessionSummary } from "../api/types";
 import { useAuth } from "../context/AuthContext";
@@ -93,14 +93,19 @@ function SessionDetail({
         </div>
       ))}
       {canEdit ? (
-        <button
-          type="button"
-          className="ghost-btn danger"
-          onClick={handleDelete}
-          disabled={deleting}
-        >
-          {deleting ? "Deleting…" : "Delete session"}
-        </button>
+        <div className="session-detail-actions">
+          <Link to={`/?edit=${sessionId}`} className="ghost-btn">
+            Edit session
+          </Link>
+          <button
+            type="button"
+            className="ghost-btn danger"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting…" : "Delete session"}
+          </button>
+        </div>
       ) : (
         <p className="view-only-note">View only — this isn't your data.</p>
       )}

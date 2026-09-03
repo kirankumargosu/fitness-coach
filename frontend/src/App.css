@@ -314,11 +314,16 @@ select:focus {
   flex: none;
 }
 
-/* Line 2: strength/cardio toggle, centered in its own row */
 .set-row-toggle-wrap {
   display: flex;
+  align-items: center;
   justify-content: center;
-  margin-bottom: 0.6rem;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.set-row-toggle-wrap .ghost-btn {
+  margin-top: 16;
 }
 
 .set-kind-toggle {
@@ -502,6 +507,8 @@ select:focus {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+
 
 .form-error {
   color: var(--danger);
@@ -1284,6 +1291,7 @@ select:focus {
   width: auto;
   padding: 0.5rem 1rem;
 }
+
 /* ---------- Log/History sub-nav (shares one bottom-nav slot) ---------- */
 .workout-subnav {
   display: flex;
@@ -1322,7 +1330,7 @@ select:focus {
   width: 100%;
 }
 
-.set-row-top > .icon-btn {
+.set-row-top>.icon-btn {
   flex: none;
 }
 
@@ -1482,7 +1490,7 @@ select:focus {
   margin-bottom: 0.65rem;
 }
 
-.exercise-block-top > .icon-btn {
+.exercise-block-top>.icon-btn {
   flex: none;
 }
 
@@ -1515,7 +1523,7 @@ select:focus {
   text-align: center;
 }
 
-.exercise-block-row > .icon-btn {
+.exercise-block-row>.icon-btn {
   flex: none;
   align-self: flex-end;
 }
@@ -1525,4 +1533,14 @@ select:focus {
   margin-top: 0;
   padding: 0.5rem;
   font-size: 0.75rem;
+}
+
+.session-detail-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.session-detail-actions .ghost-btn {
+  margin-top: 0;
 }

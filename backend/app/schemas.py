@@ -161,6 +161,18 @@ class WorkoutSessionUpdate(BaseModel):
     duration_minutes: int | None = None
     notes: str | None = None
 
+class WorkoutSessionFullUpdate(BaseModel):
+    """Used when editing an existing session from the Log Workout form —
+    replaces the session's metadata AND its entire set list in one go
+    (all old sets are deleted and replaced with these), rather than the
+    incremental add/remove-one-set endpoints below.
+    """
+
+    title: str | None = None
+    date: datetime
+    duration_minutes: int | None = None
+    notes: str | None = None
+    sets: list[SetEntryCreate] = []
 
 class WorkoutSessionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
