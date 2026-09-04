@@ -90,7 +90,8 @@ export function Nutrition() {
     setLogError(null);
     setAskAnswer(null);
     try {
-      await api.createNutritionEntry({ description: description.trim() });
+      // await api.createNutritionEntry({ description: description.trim() });
+      await api.createNutritionEntryByDish({ description: description.trim() });
       setDescription("");
       load();
     } catch (err) {
@@ -192,13 +193,6 @@ export function Nutrition() {
             {asking ? "Asking…" : "Ask AI"}
           </button>
         </div>
-
-        {askAnswer && (
-          <div className="nutrition-ask-answer">
-            <span className="nutrition-ask-label">Coach's Suggestion</span>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{askAnswer}</ReactMarkdown>
-          </div>
-        )}
       </form>
 
       {summary && summary.entry_count > 0 && (
@@ -233,6 +227,13 @@ export function Nutrition() {
             </span>
             <span className="nutrition-summary-label">unsat fat</span>
           </div>
+        </div>
+      )}
+
+      {askAnswer && (
+        <div className="nutrition-ask-answer">
+          <span className="nutrition-ask-label">Coach's Suggestion</span>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{askAnswer}</ReactMarkdown>
         </div>
       )}
 
@@ -350,7 +351,7 @@ export function Nutrition() {
                   <div className="nutrition-card-actions">
                     <button
                       type="button"
-                      className="ghost-btn"
+                      className="ghost-btn edit"
                       onClick={() => startEdit(entry)}
                     >
                       Edit

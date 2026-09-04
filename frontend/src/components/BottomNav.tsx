@@ -232,21 +232,6 @@ const TABS = [
 export function BottomNav() {
   const { pathname } = useLocation();
 
-  // return (
-  //   <nav className="bottom-nav" aria-label="Main">
-  //     {TABS.map(({ to, label, Icon, end }) => (
-  //       <NavLink
-  //         key={to}
-  //         to={to}
-  //         end={end}
-  //         className={({ isActive }) => `bottom-nav-item ${isActive ? "active" : ""}`}
-  //       >
-  //         <Icon />
-  //         <span>{label}</span>
-  //       </NavLink>
-  //     ))}
-  //   </nav>
-  // );
   return (
     <nav className="bottom-nav" aria-label="Main">
       {TABS.map(({ to, label, Icon, isActive }) => (

@@ -174,6 +174,9 @@ export const api = {
   createNutritionEntry: (payload: { description: string; timestamp?: string }) =>
     client.post<NutritionEntry>("/nutrition", payload).then((r) => r.data),
 
+  createNutritionEntryByDish: (payload: { description: string; timestamp?: string }) =>
+    client.post<NutritionEntry>("/nutrition/by_dish", payload).then((r) => r.data),
+
   listNutritionEntries: (params: { start?: string; end?: string } = {}) =>
     client
       .get<NutritionEntry[]>("/nutrition", { params })

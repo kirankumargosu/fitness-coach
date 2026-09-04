@@ -27,7 +27,7 @@ def update_profile(
 def get_user_goal(db: Session, user_id: int) -> str | None:
     user = db.get(models.User, user_id)
     return user.goal if user else None
-    
+
 # ---------- Exercises ----------
 def get_exercises(db: Session) -> list[models.Exercise]:
     return db.query(models.Exercise).order_by(models.Exercise.name).all()
@@ -447,6 +447,7 @@ def create_nutrition_entries(
             user_id=user_id,
             description=item.get("food") or payload.description,
             timestamp=getattr(payload, "timestamp", None) or datetime.utcnow(), # Fallback added here            calories=item.get("calories", 0),
+            calories=item.get("calories", 0),
             protein_g=item.get("protein_g", 0),
             carbs_g=item.get("carbs_g", 0),
             saturated_fat_g=item.get("saturated_fat_g", 0),

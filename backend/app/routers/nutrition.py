@@ -5,12 +5,49 @@ from sqlalchemy.orm import Session
 
 from app import auth, crud, models, schemas
 from app.database import get_db
-from app.nutrition_ai import NutritionAIError, ask_nutrition_question, estimate_nutrition
+from app.nutrition_ai import NutritionAIError, ask_nutrition_question, estimate_nutrition, estimate_nutrition_by_dish
 
 router = APIRouter(prefix="/api/nutrition", tags=["nutrition"])
 
 # Private — same rule as body metrics: only the owner and admin can see
 # or touch these entries.
+
+@router.post("/by_dish", response_model=list[schemas.NutritionEntryOut], status_code=201)
+def create_entries(
+    payload: schemas.NutritionEntryCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    today = date.today()
+    
+    # 1. Fetch today's summary and logged entries for context
+    summary = crud.nutrition_summary(db, current_user.id, today)
+    entries = crud.list_nutrition_entries(
+        db,
+        user_id=current_user.id,
+        start=datetime.combine(today, datetime.min.time()),
+        end=datetime.combine(today, datetime.max.time()),
+    )
+
+    # 2. Format context for the prompt
+    logged_foods = ", ".join([entry.description for entry in entries]) if entries else "None"
+
+    context = (
+        f"Date: {today}\n"
+        f"Logged Foods: {logged_foods}\n"
+        f"Totals -> Calories: {summary.get('calories', 0)} kcal, "
+        f"Protein: {summary.get('protein_g', 0)}g, "
+        f"Carbs: {summary.get('carbs_g', 0)}g, "
+        f"Saturated Fat: {summary.get('saturated_fat_g', 0)}g, "
+        f"Unsaturated Fat: {summary.get('unsaturated_fat_g', 0)}g"
+    )
+    try:
+        estimate_by_dish = estimate_nutrition_by_dish(payload.description, context=context)
+
+    except NutritionAIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    
+    return crud.create_nutrition_entries(db, current_user.id, payload, estimate_by_dish)
 
 
 @router.post("", response_model=schemas.NutritionEntryOut, status_code=201)
@@ -44,9 +81,10 @@ def create_entry(
     )
     try:
         estimate = estimate_nutrition(payload.description, context=context)
+
     except NutritionAIError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
-    # return crud.create_nutrition_entries(db, current_user.id, payload, estimates)
+    
     return crud.create_nutrition_entry(db, current_user.id, payload, estimate)
 
 

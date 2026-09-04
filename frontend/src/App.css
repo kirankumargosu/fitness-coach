@@ -104,6 +104,11 @@
 
 .bottom-nav-item svg {
   display: block;
+  transition: transform 160ms ease;
+}
+
+.bottom-nav-item.active svg {
+  transform: scale(1.2);
 }
 
 /* ---------- Header ---------- */
@@ -466,9 +471,14 @@ select:focus {
   color: var(--danger);
 }
 
+.ghost-btn.add {
+  border-color: var(--add);
+  color: var(--add);
+}
+
 .ghost-btn.edit {
   border-color: var(--edit);
-    color: var(--edit);
+  color: var(--edit);
 }
 
 .primary-btn {
@@ -1138,7 +1148,8 @@ select:focus {
 }
 
 .nutrition-ask-answer {
-  margin-top: 1rem;
+  /* margin-top: 1rem; */
+  margin-bottom: 1rem;
   background: var(--surface-raised);
   border: 1px solid var(--kiran);
   border-radius: 10px;
@@ -1534,7 +1545,8 @@ select:focus {
 }
 
 .exercise-block-add-set {
-  width: 100%;
+  width: auto;
+  justify-content: left;
   margin-top: 0;
   padding: 0.5rem;
   font-size: 0.75rem;

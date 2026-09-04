@@ -41,29 +41,29 @@ Always give your best numeric estimate, even for vague descriptions — never \
 omit a field or return null. Use 0 only when a macro is genuinely absent \
 (e.g. black coffee has 0 fat)."""
 
-# SYSTEM_ESTIMATE_PROMPT = """You are a nutrition estimation assistant. Given a free-text \
-# description of food someone ate, identify all distinct dishes/items mentioned \
-# (e.g., "chapathi with chicken curry" contains two dishes: "chapathi" and "chicken curry"). \
-# For each dish, estimate its nutritional content using typical serving sizes and \
-# standard nutrition data.
-
-# Respond with ONLY a JSON object in exactly this shape, with no other text:
-# {
-#   "dishes": [
-#     {
-#       "food": "<name of the dish if multiple dishes, otherwise same as input>",
-#       "calories": <number, kcal>,
-#       "protein_g": <number, grams>,
-#       "carbs_g": <number, grams>,
-#       "saturated_fat_g": <number, grams>,
-#       "unsaturated_fat_g": <number, grams>
-#     }
-#   ]
-# }
-
-# Always give your best numeric estimate, \
-# even for vague descriptions — never omit a field or return null. \
-# Use 0 only when a macro is genuinely absent."""
+SYSTEM_BY_DISH_ESTIMATE_PROMPT = """ You are a nutrition estimation assistant. Given a free-text description of food or meals consumed, \
+estimate the nutritional content using typical serving sizes and standard nutrition data. `
+Rules for breakdown:
+1. Identify distinct components or dishes in the input.
+2. If an item is a distinct, multi-ingredient dish with specified quantities (e.g., "chicken curry containing 250g chicken, 1 onion..."), group those ingredients together into that single dish name.
+3. If an item is a simple beverage or standalone food with minor add-ins (e.g., "coffee with 70ml semi-skimmed milk and half teaspoon of sugar"), treat the entire combination as a single dish.
+4. Separate main structural items (e.g., "2 chapathis") into their own entry.
+Respond with ONLY a JSON object in exactly this shape, with no other text:
+{
+  "dishes": [
+    {
+      "food": "<name of the dish if multiple dishes, otherwise short, cleaned-up name/summary of what was eaten>",
+      "calories": <number, kcal>,
+      "protein_g": <number, grams>,
+      "carbs_g": <number, grams>,
+      "saturated_fat_g": <number, grams>,
+      "unsaturated_fat_g": <number, grams>
+    }
+  ]
+}
+Always give your best numeric estimate, \
+even for vague descriptions — never omit a field or return null. \
+Use 0 only when a macro is genuinely absent."""
 
 
 SYSTEM_ASK_PROMPT = """You are a friendly, knowledgeable nutrition assistant. \
@@ -167,50 +167,50 @@ def estimate_nutrition(description: str, context: str | None = None) -> dict:
 
     return parsed
 
-# def estimate_nutrition(description: str, context: str | None = None) -> list[dict]:
-#     if not GROQ_API_KEY:
-#         raise NutritionAIError("GROQ_API_KEY is not configured on the server.")
+def estimate_nutrition_by_dish(description: str, context: str | None = None) -> list[dict]:
+    if not GROQ_API_KEY:
+        raise NutritionAIError("GROQ_API_KEY is not configured on the server.")
 
-#     messages = [{"role": "system", "content": SYSTEM_ESTIMATE_PROMPT}]
+    messages = [{"role": "system", "content": SYSTEM_BY_DISH_ESTIMATE_PROMPT}]
 
-#     # Include the user's daily log context if present
-#     if context:
-#         messages.append({
-#             "role": "system",
-#             "content": f"User's logged intake for today:\n{context}"
-#         })
+    # Include the user's daily log context if present
+    if context:
+        messages.append({
+            "role": "system",
+            "content": f"User's logged intake for today:\n{context}"
+        })
 
-#     messages.append({"role": "user", "content": description})
-#     try:
-#         response = httpx.post(
-#             GROQ_URL,
-#             headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-#             json={
-#                 "model": GROQ_MODEL,
-#                 "messages": messages,
-#                 "temperature": 0.2,
-#                 "response_format": {"type": "json_object"},
-#             },
-#             timeout=20.0,
-#         )
-#         response.raise_for_status()
-#     except httpx.HTTPError as exc:
-#         raise NutritionAIError(f"Couldn't reach the nutrition AI: {exc}") from exc
+    messages.append({"role": "user", "content": description})
+    try:
+        response = httpx.post(
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+            json={
+                "model": GROQ_MODEL,
+                "messages": messages,
+                "temperature": 0.2,
+                "response_format": {"type": "json_object"},
+            },
+            timeout=20.0,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise NutritionAIError(f"Couldn't reach the nutrition AI: {exc}") from exc
 
-#     try:
-#         content = response.json()["choices"][0]["message"]["content"]
-#         parsed = json.loads(content)
-#         dishes = parsed.get("dishes", [])
-#     except (KeyError, IndexError, ValueError) as exc:
-#         raise NutritionAIError("The AI didn't return a valid estimate.") from exc
+    try:
+        content = response.json()["choices"][0]["message"]["content"]
+        parsed = json.loads(content)
+        dishes = parsed.get("dishes", [])
+    except (KeyError, IndexError, ValueError) as exc:
+        raise NutritionAIError("The AI didn't return a valid estimate.") from exc
 
-#     if not isinstance(dishes, list) or not dishes:
-#         raise NutritionAIError("AI response missing 'dishes' list.")
+    if not isinstance(dishes, list) or not dishes:
+        raise NutritionAIError("AI response missing 'dishes' list.")
 
-#     # Validate each item in the list
-#     for dish in dishes:
-#         missing = [f for f in REQUIRED_FIELDS if f not in dish]
-#         if missing:
-#             raise NutritionAIError(f"AI response missing fields in dish: {', '.join(missing)}")
+    # Validate each item in the list
+    for dish in dishes:
+        missing = [f for f in REQUIRED_FIELDS if f not in dish]
+        if missing:
+            raise NutritionAIError(f"AI response missing fields in dish: {', '.join(missing)}")
 
-#     return dishes
+    return dishes

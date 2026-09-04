@@ -417,7 +417,7 @@ export function LogWorkout() {
 
         <h3 className="section-label">Exercises</h3>
 
-        <button type="button" className="ghost-btn" onClick={addExerciseBlock}>
+        <button type="button" className="ghost-btn add" onClick={addExerciseBlock}>
           + Add exercise
         </button>
 
@@ -466,7 +466,7 @@ export function LogWorkout() {
 
               <button
                 type="button"
-                className="ghost-btn exercise-block-add-set"
+                className="ghost-btn add exercise-block-add-set"
                 onClick={() => addSetRow(bi)}
               >
                 + Add set
