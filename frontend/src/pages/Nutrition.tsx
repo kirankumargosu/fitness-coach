@@ -195,7 +195,7 @@ export function Nutrition() {
 
         {askAnswer && (
           <div className="nutrition-ask-answer">
-            <span className="nutrition-ask-label">Suggestion — not logged</span>
+            <span className="nutrition-ask-label">Coach's Suggestion</span>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{askAnswer}</ReactMarkdown>
           </div>
         )}

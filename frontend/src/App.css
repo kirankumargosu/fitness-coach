@@ -466,6 +466,11 @@ select:focus {
   color: var(--danger);
 }
 
+.ghost-btn.edit {
+  border-color: var(--edit);
+    color: var(--edit);
+}
+
 .primary-btn {
   display: block;
   width: 100%;

@@ -14,7 +14,7 @@ function toLocalDatetimeInputValue(d: Date): string {
     d.getHours()
   )}:${pad(d.getMinutes())}`;
 }
- 
+
 function emptyRow(): DraftSetRow {
   return {
     reps: 8,
@@ -46,7 +46,7 @@ function blocksFromSession(session: WorkoutSession): ExerciseBlock[] {
     }
     byExercise.get(key)!.push(s);
   }
- 
+
   return order.map((name) => {
     const setsForExercise = [...byExercise.get(name)!].sort(
       (a, b) => b.set_number - a.set_number
@@ -76,33 +76,32 @@ function draftKey(userId: number): string {
 }
 
 interface DraftState {
-  date: string;
   blocks: ExerciseBlock[];
 }
- 
+
 function loadDraft(userId: number): DraftState | null {
   try {
     const raw = localStorage.getItem(draftKey(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.blocks) || typeof parsed.date !== "string") {
+    if (!parsed || !Array.isArray(parsed.blocks)) {
       return null;
     }
-    return parsed as DraftState;
+    return { blocks: parsed.blocks } as DraftState;
   } catch {
     return null;
   }
 }
 
-function saveDraft(userId: number, date: string, blocks: ExerciseBlock[]): void {
+function saveDraft(userId: number, blocks: ExerciseBlock[]): void {
   try {
-    localStorage.setItem(draftKey(userId), JSON.stringify({ date, blocks }));
+    localStorage.setItem(draftKey(userId), JSON.stringify({ blocks }));
   } catch {
     // Storage full or unavailable — drafts are a convenience, not
     // critical, so just skip silently rather than breaking logging.
   }
 }
- 
+
 function clearDraft(userId: number): void {
   try {
     localStorage.removeItem(draftKey(userId));
@@ -111,19 +110,18 @@ function clearDraft(userId: number): void {
   }
 }
 
-
 export function LogWorkout() {
   const { currentUser } = useAuth();
   const { activeUser, users, setActiveUser } = useUsers();
   const navigate = useNavigate();
- 
+
   const isAdmin = currentUser?.role === "admin";
   // Members can only ever log for themselves. Admin can log for whoever
   // is currently selected in the header switch (defaults to themselves).
   const logTarget = isAdmin ? activeUser ?? currentUser : currentUser;
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
- 
+
   // const [title, setTitle] = useState("");
   const [date, setDate] = useState(toLocalDatetimeInputValue(new Date()));
   // const [duration, setDuration] = useState<string>("");
@@ -143,37 +141,40 @@ export function LogWorkout() {
   const [carriedTitle, setCarriedTitle] = useState<string | undefined>(undefined);
   const [carriedDuration, setCarriedDuration] = useState<number | undefined>(undefined);
   const [carriedNotes, setCarriedNotes] = useState<string | undefined>(undefined);
- 
+
   // Restore a saved draft (or reset to blank) whenever we land on this
   // page for a given logging target — runs before paint so there's no
   // flash of the empty form. useLayoutEffect rather than useEffect
   // specifically to avoid that flicker.
+  //
+  // The date/time field is deliberately NOT part of the draft — it
+  // always resets to "now" on load, draft or not. Persisting it caused a
+  // bug where clearing a session (which sets date to "now" at that
+  // instant) then typing again would save that now-stale moment, and
+  // reopening the page later would restore that old timestamp instead
+  // of the actual current time.
   useLayoutEffect(() => {
     if (!logTarget) return;
     if (editId) return; // editing an existing session — don't load the new-session draft
     if (hydratedForUserId.current === logTarget.id) return;
+    setDate(toLocalDatetimeInputValue(new Date()));
     const draft = loadDraft(logTarget.id);
-    if (draft) {
-      setDate(draft.date);
-      setBlocks(draft.blocks);
-    } else {
-      setDate(toLocalDatetimeInputValue(new Date()));
-      setBlocks([emptyBlock()]);
-    }
+    setBlocks(draft ? draft.blocks : [emptyBlock()]);
     hydratedForUserId.current = logTarget.id;
   }, [logTarget?.id, editId]);
 
-  // Mirror every change into localStorage — but only once hydration above
-  // has run for this user, and never while editing an existing session
-  // (that would clobber the separate new-session draft with edit data).
+  // Mirror set/exercise changes into localStorage — but only once
+  // hydration above has run for this user, and never while editing an
+  // existing session (that would clobber the separate new-session draft
+  // with edit data). Date is intentionally excluded — see note above.
   useEffect(() => {
     if (!logTarget) return;
     if (editingSessionId !== null) return;
     if (hydratedForUserId.current !== logTarget.id) return;
-    saveDraft(logTarget.id, date, blocks);
-  }, [logTarget?.id, date, blocks, editingSessionId]);
+    saveDraft(logTarget.id, blocks);
+  }, [logTarget?.id, blocks, editingSessionId]);
 
-    // Load the session to edit whenever ?edit=<id> is present.
+  // Load the session to edit whenever ?edit=<id> is present.
   useEffect(() => {
     if (!editId) {
       setEditingSessionId(null);
@@ -250,7 +251,7 @@ export function LogWorkout() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!logTarget) return;
- 
+
     const validBlocks = blocks.filter((b) => b.exercise_name.trim().length > 0);
     if (validBlocks.length === 0) {
       setError("Log at least one set with an exercise name.");
@@ -279,7 +280,7 @@ export function LogWorkout() {
             }
         )
       );
- 
+
       if (editingSessionId !== null) {
         await api.updateSessionFull(editingSessionId, {
           title: carriedTitle,
@@ -313,13 +314,14 @@ export function LogWorkout() {
     setDate(toLocalDatetimeInputValue(new Date()));
     setBlocks([emptyBlock()]);
     setError(null);
+    setEditingSessionId(null);
   };
 
   if (!logTarget || loadingEdit) {
     return <p className="empty-state">Loading…</p>;
   }
 
- return (
+  return (
     <>
       <WorkoutSubNav />
       <form className="log-form" onSubmit={handleSubmit}>
@@ -351,7 +353,7 @@ export function LogWorkout() {
             // )
           }
         </div>
- 
+
         <div className="field-grid">
           {/* <label className="field">
             <span>Title</span>
@@ -370,7 +372,7 @@ export function LogWorkout() {
               required
             />
           </label>
- 
+
           {/* <label className="field">
             <span>Duration (min)</span>
             <input
@@ -382,7 +384,7 @@ export function LogWorkout() {
             />
           </label> */}
         </div>
- 
+
         {/* <label className="field">
           <span>Notes</span>
           <textarea
@@ -400,24 +402,25 @@ export function LogWorkout() {
               ? "Update session"
               : "Save session"}
           </button>
-          {editingSessionId === null && (
+          {/* {editingSessionId === null && ( */}
             <button
               type="button"
               className="ghost-btn danger"
               onClick={handleClearDraft}
               disabled={submitting}
             >
-              Clear session
+              {editingSessionId !== null ? "Cancel edits" : "Clear session"}
+              {/* Clear session */}
             </button>
-          )}
+          {/* )} */}
         </div>
- 
+
         <h3 className="section-label">Exercises</h3>
- 
+
         <button type="button" className="ghost-btn" onClick={addExerciseBlock}>
           + Add exercise
         </button>
- 
+
         <div className="exercise-blocks">
           {blocks.map((block, bi) => (
             <div className={`exercise-block-card exercise-block-${block.kind}`} key={bi}>
@@ -441,7 +444,7 @@ export function LogWorkout() {
                   ✕
                 </button>
               </div>
- 
+
               <div className="exercise-block-toggle-wrap">
                 <div className="set-kind-toggle" role="group" aria-label="Set type">
                   <button
@@ -460,7 +463,7 @@ export function LogWorkout() {
                   </button>
                 </div>
               </div>
- 
+
               <button
                 type="button"
                 className="ghost-btn exercise-block-add-set"
@@ -468,7 +471,7 @@ export function LogWorkout() {
               >
                 + Add set
               </button>
- 
+
               <div className="exercise-block-rows">
                 {block.rows.map((row, ri) => (
                   <div className="set-row-fields exercise-block-row" key={ri}>
@@ -502,7 +505,7 @@ export function LogWorkout() {
                             </select>
                           </div>
                         </label>
- 
+
                         <label className="set-field">
                           <span className="set-field-label">Reps</span>
                           <input
@@ -579,7 +582,7 @@ export function LogWorkout() {
                   </div>
                 ))}
               </div>
- 
+
               {/* <button
                 type="button"
                 className="ghost-btn exercise-block-add-set"
@@ -590,13 +593,13 @@ export function LogWorkout() {
             </div>
           ))}
         </div>
- 
+
         {/* <button type="button" className="ghost-btn" onClick={addExerciseBlock}>
           + Add exercise
         </button> */}
- 
+
         {error && <p className="form-error">{error}</p>}
- 
+
         {/* <button type="submit" className="primary-btn" disabled={submitting}>
           {submitting ? "Saving…" : "Save session"}
         </button> */}

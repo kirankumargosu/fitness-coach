@@ -75,9 +75,17 @@ export function TrendChart({
   );
 }
 
-function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+function formatShortDate(dateOnly: string): string {
+  // dateOnly is a pure calendar date ("YYYY-MM-DD", no time-of-day) —
+  // there's no timezone to convert here. Building the Date from its
+  // year/month/day components (the local-time constructor form) instead
+  // of `new Date(dateOnly)` matters: JS parses a date-only STRING as UTC
+  // midnight, and converting that to local time can land on the previous
+  // calendar day in any timezone behind UTC.
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
+
 }

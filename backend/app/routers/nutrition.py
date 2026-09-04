@@ -82,7 +82,7 @@ def ask(
     # 2. Format context for the prompt
     logged_foods = ", ".join([entry.description for entry in entries]) if entries else "None"
 
-    context = (
+    food_today = (
         f"Date: {today}\n"
         f"Logged Foods: {logged_foods}\n"
         f"Totals -> Calories: {summary.get('calories', 0)} kcal, "
@@ -91,9 +91,11 @@ def ask(
         f"Saturated Fat: {summary.get('saturated_fat_g', 0)}g, "
         f"Unsaturated Fat: {summary.get('unsaturated_fat_g', 0)}g"
     )
+
+    goal = crud.get_user_goal(db, current_user.id)
     
     try:
-        answer = ask_nutrition_question(payload.question, context=context)
+        answer = ask_nutrition_question(payload.question, food_today=food_today, goal=goal)
     except NutritionAIError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     return schemas.NutritionAskResponse(answer=answer)

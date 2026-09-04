@@ -24,7 +24,10 @@ def update_profile(
     db.refresh(user)
     return user
 
-
+def get_user_goal(db: Session, user_id: int) -> str | None:
+    user = db.get(models.User, user_id)
+    return user.goal if user else None
+    
 # ---------- Exercises ----------
 def get_exercises(db: Session) -> list[models.Exercise]:
     return db.query(models.Exercise).order_by(models.Exercise.name).all()

@@ -68,15 +68,16 @@ omit a field or return null. Use 0 only when a macro is genuinely absent \
 
 SYSTEM_ASK_PROMPT = """You are a friendly, knowledgeable nutrition assistant. \
 Answer the user's question directly and practically using their logged daily intake context \
-if provided. Suggest specific foods, dishes, or approaches where relevant. \
-Keep your answer concise (a few sentences to a short paragraph), conversational, and actionable. \
+if provided. Also consider the user's goal if provided. Suggest specific foods, dishes, or approaches where relevant \
+considering the user's goal and already logged intake. \
+Keep your answer concise (a few sentences to a short paragraph), conversational, and actionable and reason for your choice \
 Respond in plain text, not JSON."""
 
 class NutritionAIError(Exception):
     """Raised for any failure talking to or parsing the AI's response —
     the router turns this into a clean 502 rather than a raw traceback."""
 
-def ask_nutrition_question(question: str, context: str | None = None) -> str:
+def ask_nutrition_question(question: str, food_today: str | None = None, goal: str | None = None) -> str:
     """Answers a nutrition question (e.g. meal suggestions) as plain text.
     Deliberately separate from estimate_nutrition and never touches the
     database — there's no code path here that could accidentally log
@@ -89,10 +90,17 @@ def ask_nutrition_question(question: str, context: str | None = None) -> str:
     messages = [{"role": "system", "content": SYSTEM_ASK_PROMPT}]
 
     # Include the user's daily log context if present
-    if context:
+    if food_today:
         messages.append({
             "role": "system",
-            "content": f"User's logged intake for today:\n{context}"
+            "content": f"User's logged intake for today:\n{food_today}"
+        })
+
+    # Include the user's goal if present
+    if goal:
+        messages.append({
+            "role": "system",
+            "content": f"User's goal:\n{goal}"
         })
 
     messages.append({"role": "user", "content": question})

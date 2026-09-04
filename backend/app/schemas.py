@@ -1,7 +1,31 @@
-from datetime import date, datetime
-from typing import Literal
+from datetime import date, datetime, timezone
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
+
+def _as_utc_iso(dt: datetime) -> str:
+    """Every datetime this app stores is UTC by convention (always written
+    via datetime.utcnow()), but SQLite/Python naive datetimes carry no
+    timezone marker, so plain `datetime` fields serialize to JSON WITHOUT
+    a "Z" or offset — e.g. "2026-09-04T04:33:13", not
+    "2026-09-04T04:33:13Z". A JS `new Date(...)` on a marker-less string
+    assumes *local* time, silently shifting every displayed timestamp by
+    the browser's UTC offset. This serializer fixes that at the one
+    boundary that matters — output schemas — by always emitting an
+    explicit "Z", without needing every frontend call site to know or
+    guess that the app's convention is UTC.
+    """
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+# Use this instead of a plain `datetime` on any *Out response schema.
+# Input schemas (Create/Update) can keep plain `datetime` — parsing
+# already handles incoming strings correctly with or without a marker.
+UTCDateTime = Annotated[datetime, PlainSerializer(_as_utc_iso, return_type=str)]
 
 
 # ---------- User ----------
@@ -179,10 +203,10 @@ class WorkoutSessionOut(BaseModel):
     id: int
     user: UserOut
     title: str | None = None
-    date: datetime
+    date: UTCDateTime
     duration_minutes: int | None = None
     notes: str | None = None
-    created_at: datetime
+    created_at: UTCDateTime
     sets: list[SetEntryOut] = []
 
 
@@ -193,7 +217,7 @@ class WorkoutSessionSummary(BaseModel):
     id: int
     user: UserOut
     title: str | None = None
-    date: datetime
+    date: UTCDateTime
     duration_minutes: int | None = None
     set_count: int = 0
     total_volume: float = 0
@@ -285,7 +309,7 @@ class NutritionEntryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     description: str
-    timestamp: datetime
+    timestamp: UTCDateTime
     calories: float
     protein_g: float
     carbs_g: float
@@ -316,7 +340,7 @@ class WaterEntryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     amount_ml: float
-    timestamp: datetime
+    timestamp: UTCDateTime
 
 class WaterSummaryOut(BaseModel):
     date: date

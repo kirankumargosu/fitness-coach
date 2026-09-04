@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { WorkoutSession, WorkoutSessionSummary } from "../api/types";
 import { useAuth } from "../context/AuthContext";
@@ -45,6 +45,9 @@ function SessionDetail({
 }) {
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     api.getSession(sessionId).then(setSession);
@@ -58,6 +61,11 @@ function SessionDetail({
     } finally {
       setDeleting(false);
     }
+  };
+
+    const handleEdit = () => {
+    setEditing(true);
+    navigate(`/?edit=${sessionId}`);
   };
 
   if (!session) return <p className="empty-state">Loading…</p>;
@@ -94,9 +102,15 @@ function SessionDetail({
       ))}
       {canEdit ? (
         <div className="session-detail-actions">
-          <Link to={`/?edit=${sessionId}`} className="ghost-btn">
-            Edit session
-          </Link>
+          <button
+            type="button"
+            className="ghost-btn edit"
+            onClick={handleEdit}
+            disabled={editing}
+          >
+            {editing ? "Editing…" : "Edit session"}
+          </button>
+
           <button
             type="button"
             className="ghost-btn danger"

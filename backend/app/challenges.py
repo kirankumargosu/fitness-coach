@@ -17,7 +17,7 @@ Three types:
 kg/lb are converted to kg internally for fair comparison, same as the
 "Top of the House" badge.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -37,7 +37,10 @@ def _window_bounds(start_date: date, end_date: date) -> tuple[datetime, datetime
 
 
 def compute_status(start_date: date, end_date: date) -> str:
-    today = date.today()
+    # UTC, not the server's OS-local timezone — date.today() would depend
+    # on however the host/container happens to be configured, which could
+    # silently disagree with everything else in the app near midnight.
+    today = datetime.now(timezone.utc).date()
     if today < start_date:
         return "upcoming"
     if today > end_date:
